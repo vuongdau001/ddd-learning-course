@@ -1,0 +1,41 @@
+# ==========================================
+# CRM Phase 1 — Tài liệu nội bộ khách hàng
+# ==========================================
+CRM Phase 1/
+
+# ==========================================
+# Raw data trích xuất từ ChatGPT (toàn bộ)
+# ==========================================
+raw_conversation.json
+raw_conversation2.json
+conv_clean.json
+conversation/
+
+# ==========================================
+# Learning roadmap cá nhân (overlap với curriculum)
+# ==========================================
+learning-roadmap/
+
+# ==========================================
+# macOS system files
+# ==========================================
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# ==========================================
+# Editor & IDE
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==========================================
+# Python scripts dùng để setup (không public)
+# ==========================================
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
