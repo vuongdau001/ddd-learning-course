@@ -4,7 +4,8 @@
 
 [![License: CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
 [![Language](https://img.shields.io/badge/Language-Tiếng%20Việt-blue)](.)
-[![Modules](https://img.shields.io/badge/Modules-6-green)](./curriculum/)
+[![Modules](https://img.shields.io/badge/Modules-11-green)](./curriculum/)
+[![Stages](https://img.shields.io/badge/Stages-3-orange)](./curriculum/)
 [![AI Powered](https://img.shields.io/badge/AI-Antigravity%20Agent-purple)](./agent/)
 
 ---
@@ -24,9 +25,10 @@ Nếu bạn từng gặp những tình huống này:
 
 ## 🗺️ Tổng quan khóa học
 
-**6 modules** · **19 lessons** · **50 câu quiz** · **AI instructor 24/7**
+**11 modules** · **3 stages** · **35 lessons** · **84 câu quiz** · **AI instructor 24/7**
 
 ```
+═══════════════════ STAGE 1: DDD Foundation ═══════════════════
 Module 1: Domain Discovery        ← Tìm ra lĩnh vực nghiệp vụ từ business
      ↓
 Module 2: Ubiquitous Language     ← Xây ngôn ngữ chung cho cả team
@@ -38,6 +40,18 @@ Module 4: Event Storming          ← Mô hình hóa quy trình nghiệp vụ
 Module 5: Bounded Context         ← Thiết kế ranh giới và tích hợp
      ↓
 Module 6: Knowledge Architecture  ← Tổ chức tri thức cho cả người lẫn AI
+
+═══════════════ STAGE 2: Knowledge Engineering ════════════════
+Module 7: Tactical DDD            ← Entity, VO, Aggregate, Repository
+     ↓
+Module 8: Advanced Patterns       ← CQRS, Event Sourcing, Saga
+     ↓
+Module 9: Enterprise Integration  ← TOGAF bridge, Knowledge Graph
+
+═══════════ STAGE 3: AI-Native Development ═══════════════════
+Module 10: Context Engineering    ← Context Window, RAG từ DDD artifacts
+     ↓
+Module 11: Knowledge-Driven Dev  ← Agent orchestration, AI-Native workflow
 ```
 
 **Phương pháp học: CEER**
@@ -114,27 +128,26 @@ ddd-learning-course/
 │
 ├── curriculum/                      ← Nội dung bài học (đọc tham khảo)
 │   ├── README.md                    ← Index chương trình
-│   ├── module-1-domain-discovery/
-│   │   ├── overview.md
-│   │   ├── lesson-1-domain-thinking.md
-│   │   ├── lesson-2-value-chain.md
-│   │   ├── lesson-3-discovery-techniques.md
-│   │   ├── lesson-4-capability-decomposition.md
-│   │   └── assessment.md
+│   ├── module-1-domain-discovery/   ← Stage 1: Foundation
 │   ├── module-2-ubiquitous-language/
 │   ├── module-3-strategic-design/
 │   ├── module-4-event-storming/
 │   ├── module-5-bounded-context/
-│   └── module-6-knowledge-architecture/
+│   ├── module-6-knowledge-architecture/
+│   ├── module-7-tactical-ddd/       ← Stage 2: Knowledge Engineering
+│   ├── module-8-advanced-patterns/
+│   ├── module-9-enterprise-integration/
+│   ├── module-10-context-engineering/ ← Stage 3: AI-Native
+│   └── module-11-knowledge-driven-dev/
 │
 ├── practice/                        ← BÀI LÀM CỦA BẠN (bạn sửa ở đây)
 │   ├── progress.md                  ← Tiến độ học (AI tự cập nhật)
 │   ├── domain-map.md                ← Output Module 1
-│   └── glossary/                    ← Output Module 2 (ví dụ mẫu)
-│       ├── account.md
-│       ├── lead.md
-│       ├── opportunity.md
-│       └── ...
+│   ├── glossary/                    ← Output Module 2
+│   ├── domain-priority.md           ← Output Module 3
+│   ├── event-storm/                 ← Output Module 4
+│   ├── context-map.md               ← Output Module 5
+│   └── knowledge-repo/              ← Output Module 6
 │
 └── docs/
     └── why-ddd.md                   ← Tại sao phải học DDD?
@@ -225,6 +238,72 @@ ddd-learning-course/
 
 ---
 
+### Module 7 — Tactical DDD *(~1.5 tuần)*
+
+> **Mục tiêu:** Từ model nghiệp vụ đến code — Entity, VO, Aggregate, Repository.
+
+| Lesson | Bạn sẽ học | Deliverable |
+|---|---|---|
+| 7.1 Entities & Value Objects | Identity vs Equality, 3 tiêu chí phân biệt | — |
+| 7.2 Aggregates & Roots | Consistency boundaries, 4 quy tắc thiết kế | — |
+| 7.3 Domain Services & Factories | Logic liên aggregate, Factory pattern | — |
+| 7.4 Repository Pattern | Persistence ignorance, interface design | `practice/tactical-model/` |
+| **Quiz** | 10 câu | Score ghi vào progress.md |
+
+---
+
+### Module 8 — Advanced Patterns *(~1.5 tuần)*
+
+> **Mục tiêu:** CQRS, Event Sourcing, Saga cho hệ thống phức tạp.
+
+| Lesson | Bạn sẽ học | Deliverable |
+|---|---|---|
+| 8.1 CQRS | Command/Query separation, read models | — |
+| 8.2 Event Sourcing | Event store, projection, temporal queries | — |
+| 8.3 Saga & Process Manager | Long-running processes, compensation | `practice/cqrs-model/` |
+| **Quiz** | 8 câu | Score ghi vào progress.md |
+
+---
+
+### Module 9 — Enterprise Integration *(~1 tuần)*
+
+> **Mục tiêu:** DDD trong tổ chức lớn — TOGAF, Knowledge Graph, Organizational Knowledge.
+
+| Lesson | Bạn sẽ học | Deliverable |
+|---|---|---|
+| 9.1 DDD ↔ Enterprise Architecture | Capability Map → TOGAF, EA alignment | — |
+| 9.2 Knowledge Graph & Traceability | Formal links: Domain → Requirement → Test | — |
+| 9.3 Organizational Knowledge | Meeting Records, Policy Documents | `practice/enterprise-map/` |
+| **Quiz** | 8 câu | Score ghi vào progress.md |
+
+---
+
+### Module 10 — Context Engineering *(~1 tuần)*
+
+> **Mục tiêu:** Thiết kế Context Window, RAG pipeline, Structured Prompts từ DDD artifacts.
+
+| Lesson | Bạn sẽ học | Deliverable |
+|---|---|---|
+| 10.1 Context Window Design | System prompt layers, dynamic context | — |
+| 10.2 RAG from DDD Artifacts | Retrieval pipeline: Glossary → Code | — |
+| 10.3 Structured Prompts | Domain-aware prompts, CoT with DDD | `practice/ai-context/` |
+| **Quiz** | 8 câu | Score ghi vào progress.md |
+
+---
+
+### Module 11 — Knowledge-Driven Dev *(~1 tuần)*
+
+> **Mục tiêu:** AI-Native workflow — từ Knowledge Objects đến Code + Tests tự động.
+
+| Lesson | Bạn sẽ học | Deliverable |
+|---|---|---|
+| 11.1 Agent Instructions | AGENT.md, scoping per Bounded Context | — |
+| 11.2 Agent Orchestration | Multi-agent = multi-context | — |
+| 11.3 AI-Native Workflow | Code gen + Test gen from Knowledge Objects | `practice/agent-config/` |
+| **Quiz** | 8 câu (Capstone liên kết 11 modules) | Score ghi vào progress.md |
+
+---
+
 ## 🤖 AI Skills — Hoạt động như thế nào?
 
 Khóa học có **3 AI skills** tích hợp sẵn, mỗi skill có vai trò riêng:
@@ -273,7 +352,7 @@ Rubric review deliverable (thang 10):
 A: Biết lập trình cơ bản, đã làm việc với software project (dev, BA, hoặc PM kỹ thuật). Không cần biết DDD trước.
 
 **Q: Học bao lâu xong?**  
-A: Mỗi module ~1 tuần nếu học đều. Toàn bộ Stage 1 (6 modules) ≈ 6–8 tuần tùy tốc độ.
+A: Mỗi module ~1 tuần nếu học đều. Stage 1 (6 modules) ≈ 6–8 tuần. Toàn bộ 3 stages (11 modules) ≈ 12–15 tuần tùy tốc độ.
 
 **Q: Không có Antigravity thì dùng được không?**  
 A: Vẫn đọc được tài liệu trong `curriculum/`, nhưng mất đi phần interactive (AI dạy, chấm bài, track progress). Khuyến khích dùng Antigravity để có trải nghiệm đầy đủ.
@@ -299,11 +378,11 @@ Thư mục `practice/` có sẵn **ví dụ mẫu** từ case study ITO CRM đ�
 
 ## 🚀 Lộ trình phát triển
 
-| Stage | Nội dung | Trạng thái |
-|---|---|---|
-| **Stage 1** | DDD Foundation (6 modules) | ✅ Hoàn thành |
-| **Stage 2** | Knowledge Engineering (Tactical Design, CQRS, Event Sourcing) | 🔜 Sắp ra |
-| **Stage 3** | AI-Native Development (Context Engineering, RAG từ DDD artifacts) | 📅 Tương lai |
+| Stage | Nội dung | Modules | Trạng thái |
+|---|---|:---:|---|
+| **Stage 1** | DDD Foundation | M1-M6 (6 modules, 19 lessons) | ✅ Hoàn thành |
+| **Stage 2** | Knowledge Engineering | M7-M9 (3 modules, 10 lessons) | ✅ Hoàn thành |
+| **Stage 3** | AI-Native Development | M10-M11 (2 modules, 6 lessons) | ✅ Hoàn thành |
 
 ---
 
