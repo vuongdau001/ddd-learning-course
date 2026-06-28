@@ -153,7 +153,7 @@ ddd-learning-course/
 | 1.1 Domain Thinking | Domain ≠ System component; 3 tiêu chí kiểm tra | — |
 | 1.2 Value Chain | Đi theo dòng tiền, vẽ value chain 10+ bước | — |
 | 1.3 Discovery Techniques | 4 kỹ thuật khám phá domain thực tế | — |
-| 1.4 Capability Decomposition | Tách domain → capabilities, chọn MVP | `practice/domain-map.md` |
+| 1.4 Capability Decomposition | Tách domain → capabilities, chọn MVP, EA bridge | `practice/domain-map.md` |
 | **Quiz** | 10 câu (Recall + Apply + Analyze) | Score ghi vào progress.md |
 
 **Điều kiện sang Module 2:** Tự vẽ được Value Chain không cần nhìn tham khảo + score quiz ≥70%
@@ -218,9 +218,9 @@ ddd-learning-course/
 
 | Lesson | Bạn sẽ học | Deliverable |
 |---|---|---|
-| 6.1 Repository Structure | Docs-as-Code, Atomic Files, Cross-linking | — |
-| 6.2 ADR and Traceability | Architecture Decision Records | — |
-| 6.3 AI Context Design | 3 AI-readability levels, Agent config | `practice/knowledge-repo/` |
+| 6.1 Repository Structure | Docs-as-Code, Atomic Files, Knowledge Objects | — |
+| 6.2 ADR and Traceability | Architecture Decision Records, Traceability Chain | — |
+| 6.3 AI Context Design | 3 AI-readability levels, Agent config, Stage 3 preview | `practice/knowledge-repo/` |
 | **Quiz** | 8 câu (Capstone liên kết 6 modules) | Score ghi vào progress.md |
 
 ---

@@ -183,9 +183,32 @@ docs/
 
 3. **Atomic files có limit không?** 100 glossary terms = 100 files → quá nhiều? Hay vẫn OK vì mỗi file nhỏ?
 
+### 💡 Insight: Mọi DDD artifact = Knowledge Object
+
+Nhìn lại 5 modules vừa qua, bạn đã tạo ra nhiều loại artifact khác nhau:
+
+| Module | Artifact | Ví dụ |
+|---|---|---|
+| 1 | Domain Map | `domain-map.md` — 9 domains + capabilities |
+| 2 | Glossary entries | `glossary/resource.md` — định nghĩa + business rules |
+| 3 | Priority Matrix | `domain-priority.md` — Core/Supporting/Generic |
+| 4 | Event Storms | `event-storms/resource-management.md` — Events, Commands, Policies |
+| 5 | Context Map | `context-map.md` — Bounded Contexts + integration patterns |
+| 6 | ADRs | `decisions/001-*.md` — quyết định + lý do |
+
+Chúng trông khác nhau, nhưng có chung **3 đặc điểm**:
+1. **Atomic** — mỗi file = 1 đơn vị tri thức độc lập
+2. **Cross-linked** — liên kết với nhau qua references
+3. **Machine-readable** — AI Agent có thể đọc, parse, và reasoning
+
+Trong Knowledge Architecture, tất cả đều được gọi chung là **Knowledge Objects** — đơn vị tri thức có thể version, cross-link, và cho cả người lẫn AI đọc. Khi bạn tổ chức repository, bạn không "viết tài liệu" — bạn đang **xây dựng Knowledge Graph** từ các Knowledge Objects.
+
+> Lesson 6.2 và 6.3 tiếp theo sẽ dạy cách liên kết (Traceability) và tối ưu hóa (AI Context Design) cho các Knowledge Objects này.
+
 ---
 
 ## ✅ Hoàn thành lesson khi
 - [ ] Giải thích 3 nguyên tắc (Atomic, Version-controlled, Cross-linked)
 - [ ] Thiết kế `src/` folder theo Bounded Contexts
 - [ ] Thiết kế `docs/` folder cho ITO
+

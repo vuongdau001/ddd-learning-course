@@ -230,3 +230,17 @@ Bạn đã hoàn thành **6 modules DDD Foundation**:
 6. Knowledge Architecture → Knowledge Repository
 
 → Tiếp: **Quiz Module 6** rồi chuyển sang **Stage 2: Knowledge Engineering**
+
+### 🔮 Preview: Stage 3 — AI-Native Development
+
+Lesson này chạm vào Level 1-3 của AI-readability — cách làm cho AI **đọc được** knowledge. Stage 3 sẽ đi xa hơn: làm cho AI **hành động được** dựa trên knowledge:
+
+| Topic | Bạn sẽ học | Tại sao cần DDD trước? |
+|---|---|---|
+| **Context Engineering** | Cách tổ chức Knowledge Objects cho LLM context window | Không có Glossary + Domain Map → context lộn xộn |
+| **RAG Pipeline** | Retrieval-Augmented Generation từ DDD artifacts | Không có atomic files → retrieval không chính xác |
+| **Agent Orchestration** | Multiple AI agents, mỗi agent = 1 Bounded Context | Không có Context Map → agents xung đột scope |
+| **Knowledge-driven Dev** | Code generation từ structured domain knowledge | Không có Business Rules + Events → generate CRUD generic |
+
+> **Tại sao phải chờ?** Stage 1 (DDD Foundation) tạo ra **structured knowledge**. Stage 2 (Tactical Design) tạo ra **implementation patterns**. Stage 3 kết hợp cả hai để AI có thể **autonomous development** — viết code chính xác vì hiểu cả business lẫn architecture.
+

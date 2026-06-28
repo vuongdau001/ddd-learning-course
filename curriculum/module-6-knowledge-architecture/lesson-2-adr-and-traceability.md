@@ -204,6 +204,30 @@ Viết ADR cho: "Chọn tech stack cho Real-time Tracking (WebSocket vs Server-S
 (viết đầy đủ)
 ```
 
+### Phần C: Traceability Chain (15 phút)
+
+Chọn 1 Knowledge Object bạn đã tạo (VD: Glossary entry "Allocation") và trace xuyên suốt các DDD layers:
+
+| Layer | Loại Knowledge Object | Ví dụ với "Allocation" | File |
+|---|---|---|---|
+| **Business Term** | Glossary entry | Allocation = % time phân bổ cho project | `glossary/allocation.md` |
+| **Business Rule** | Invariant | total_allocation ≤ 100% | `glossary/allocation.md#invariants` |
+| **Domain Event** | Event Storm | ResourceAllocated, AllocationRejected | `event-storms/resource-management.md` |
+| **Context** | Context Map | Resource Management (Core) | `context-map.md` |
+| **Decision** | ADR | Dùng % thay vì Man-Day (ADR-001) | `decisions/adr-001.md` |
+
+**Bây giờ, làm tương tự cho 1 term khác:**
+
+| Layer | Loại Knowledge Object | Term của bạn: ___________ | File |
+|---|---|---|---|
+| Business Term | Glossary entry | | |
+| Business Rule | Invariant | | |
+| Domain Event | Event Storm | | |
+| Context | Context Map | | |
+| Decision | ADR | | |
+
+> **Tại sao exercise này quan trọng?** Khi AI Agent nhận được câu hỏi "Generate API for Allocation", nó không chỉ đọc 1 file — nó traverse toàn bộ chain này. Traceability Chain chính là thứ biến "đống files" thành "Knowledge Graph" mà AI có thể reasoning.
+
 ---
 
 ## 🪞 Reflect
@@ -221,3 +245,5 @@ Viết ADR cho: "Chọn tech stack cho Real-time Tracking (WebSocket vs Server-S
 - [ ] Viết 1 ADR hoàn chỉnh cho ITO
 - [ ] Viết 1 ADR hoàn chỉnh cho Logistics
 - [ ] Hiểu Traceability giữa ADR ↔ Glossary ↔ Event Storm
+- [ ] Hoàn thành Traceability Chain cho ≥1 Knowledge Object
+

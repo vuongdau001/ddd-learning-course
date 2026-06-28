@@ -152,6 +152,16 @@ MVP gồm capabilities nào? _______________
 
 3. **Khi nào thì 1 Capability nên "lên chức" thành Domain riêng?** Gợi ý: nghĩ về quy mô team và tốc độ thay đổi.
 
+> [!TIP]
+> **💡 Nâng cao: Capability trong Enterprise Architecture**
+>
+> Capability Decomposition không chỉ là kỹ thuật DDD. Trong **TOGAF** và **Business Architecture**, khái niệm tương đương là **Business Capability Map** — bản đồ "tổ chức này CÓ THỂ LÀM GÌ":
+> - **Business Capability Map** (TOGAF) ≈ **Domain Map + Capabilities** (DDD) ở Level 1-2
+> - **Capability-based Planning** = ưu tiên đầu tư dựa trên capability gaps — giống cách bạn chọn MVP capabilities ở trên
+> - Nếu bạn làm PO/BA/Enterprise Architect, Capability Decomposition chính là cầu nối mạnh nhất giữa DDD và Enterprise Architecture frameworks
+>
+> Bạn không cần học TOGAF ngay, nhưng nên biết: **kỹ năng bạn vừa học ở đây có thể dùng trực tiếp trong EA workshops.**
+
 ---
 
 ## ✅ Hoàn thành lesson khi
