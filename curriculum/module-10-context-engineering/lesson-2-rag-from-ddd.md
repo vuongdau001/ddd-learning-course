@@ -105,6 +105,49 @@ DDD-aware RAG:
   → Đây là lý do Module 6 dạy "1 file = 1 concept"
 ```
 
+### Knowledge Object Metadata Schema — RAG-ready
+
+Module 6 đã giới thiệu concept "mọi artifact = Knowledge Object". Bây giờ chúng ta cần **metadata schema** để RAG retriever tìm đúng và đủ:
+
+```yaml
+# glossary/resource.md
+---
+id: KO-GLOSSARY-001
+type: glossary                        # glossary | event-storm | adr | context-map
+owner: Resource Management            # Bounded Context sở hữu
+domain: resource-management           # Subdomain
+tags: [core-domain, high-conflict]    # Searchable tags
+
+# Relationships — AI dùng để follow cross-links
+related_events: [ResourceAllocated, ResourceBenched, ResourceFreed]
+related_contexts: [resource-management, delivery-management]
+related_adrs: [adr-001-use-percentage]
+related_apis: [POST /allocations, GET /resources/:id/availability]
+related_tests: [test_allocation_validation, test_bench_detection]
+---
+```
+
+**Tại sao cần metadata?**
+
+```
+Không có metadata:
+  Query: "allocation rules"
+  → Chỉ tìm glossary/allocation.md (text match)
+  → Thiếu: adr-001, ResourceAllocated event, validation tests
+
+Có metadata:
+  Query: "allocation rules"
+  → glossary/allocation.md (text match)
+  → Follow related_adrs → decisions/adr-001.md
+  → Follow related_events → event-storms/resource-mgmt.md
+  → Follow related_tests → test files
+  → AI nhận ĐỦ context → generate chính xác hơn
+```
+
+**Metadata = "wiring diagram" cho Knowledge Graph.** Nó biến collection of files thành navigable graph.
+
+> 💡 **Bạn không cần metadata cho mọi file ngày đầu.** Bắt đầu với Core Domain glossary terms → mở rộng dần. ROI cao nhất là metadata cho high-conflict terms (Module 2).
+
 ### Ví dụ — ITO CRM RAG
 
 ```

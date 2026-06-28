@@ -54,6 +54,48 @@ Module 10: Context Engineering    ← Context Window, RAG từ DDD artifacts
 Module 11: Knowledge-Driven Dev  ← Agent orchestration, AI-Native workflow
 ```
 
+### 🧭 Learning Map — Ba tầng xuyên suốt
+
+Khóa học xây dựng kiến thức theo 3 tầng chồng lên nhau. Mỗi module tô sáng một phần trên bản đồ này:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    BUSINESS LAYER                           │
+│  Vision → Value Chain → Capability → Domain Model           │
+│  ─────────────────────────────────────────────────           │
+│  Module 1: Discovery    Module 3: Strategic Design          │
+├─────────────────────────────────────────────────────────────┤
+│                   KNOWLEDGE LAYER                           │
+│  Language → Rules → Events → Context → Knowledge Objects    │
+│  ─────────────────────────────────────────────────           │
+│  Module 2: Language     Module 4: Events                    │
+│  Module 5: Context      Module 6: Knowledge Architecture    │
+├─────────────────────────────────────────────────────────────┤
+│                  ENGINEERING LAYER                           │
+│  Requirements → Decisions → API → Code → Tests → AI        │
+│  ─────────────────────────────────────────────────           │
+│  Module 7-8: Tactical   Module 9: Enterprise                │
+│  Module 10-11: AI-Native Development                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 📦 Artifact Pipeline — Mỗi module tạo ra gì?
+
+| Module | Artifact tạo ra | Là đầu vào cho |
+|:---:|---|---|
+| 1 | Domain Map | M3 (phân loại), M5 (ranh giới) |
+| 2 | Glossary | M4 (naming), M6 (knowledge base), M10 (RAG) |
+| 3 | Priority Matrix | M3 (Build/Buy), M7 (chọn aggregate) |
+| 4 | Event Storm | M5 (tìm context boundary), M7 (tìm aggregate) |
+| 5 | Context Map | M7 (scope code), M9 (Enterprise bridge) |
+| 6 | Knowledge Repo | M10 (RAG source), M11 (Agent context) |
+| 7-8 | Tactical Model | M9 (traceability), M11 (code gen) |
+| 9 | Enterprise Map | M10 (context window) |
+| 10 | AI Context Config | M11 (agent orchestration) |
+| 11 | Agent Workflow | Production-ready AI-Native dev |
+
+> 💡 **Mọi artifact trong khóa học này đều phục vụ hai đối tượng: con người (collaboration) và AI (automation).** Bạn sẽ hiểu tại sao khi đến Stage 3.
+
 **Phương pháp học: CEER**
 
 | Bước | Ý nghĩa | Diễn ra như thế nào |

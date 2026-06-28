@@ -23,6 +23,25 @@ Login bạn có thể mua hoặc dùng Keycloak trong 2 ngày. Nhưng Resource M
 
 → **Không phải domain nào cũng đáng để build từ đầu.**
 
+### Core Domain không tự nhiên sinh ra
+
+Trước khi phân loại domain, hãy nhớ: **Core Domain bắt nguồn từ chiến lược kinh doanh**, không phải từ kỹ thuật.
+
+```
+    Business Goal           ← CEO: "Trở thành ITO #1 về talent matching"
+         │
+         ▼
+  Competitive Advantage     ← "Chúng ta match resource nhanh hơn, chính xác hơn"
+         │
+         ▼
+    Core Domain             ← Resource Management = Core
+         │
+         ▼
+  Investment Priority       ← Đội giỏi nhất, ngân sách lớn nhất cho Core
+```
+
+> 💡 **Nếu không rõ Business Goal → không thể xác định đúng Core Domain.** Hai công ty ITO cùng ngành nhưng chiến lược khác nhau sẽ có Core Domain khác nhau. VD: ITO chuyên giá rẻ → Core là Cost Optimization, không phải Resource Matching.
+
 ### 3 loại Domain
 
 | Loại | Định nghĩa | Chiến lược | Ví dụ |

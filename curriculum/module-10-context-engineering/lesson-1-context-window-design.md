@@ -131,9 +131,18 @@ Context window limit: 128K tokens (nhưng tối ưu ở ~20-30K)
 
 ## 🏋️ Exercise — Thiết kế Context Window
 
+> 📂 **Mở các artifacts bạn đã tạo từ Module 1-6 trước khi bắt đầu:**
+> - `practice/domain-map.md` → lấy Core Domains cho Layer 1
+> - `practice/glossary/` → lấy Terminology Rules cho Layer 1
+> - `practice/domain-priority.md` → biết domain nào cần context chi tiết nhất
+> - `practice/context-map.md` → biết integration constraints
+> - `practice/knowledge-repo/` → nguồn cho Layer 2 và Layer 3
+>
+> Đây là lúc mọi artifact bạn đã build trở thành **đầu vào thực sự cho AI**.
+
 ### Phần A: ITO — System Prompt (15 phút)
 
-Viết System Prompt (Layer 1) cho ITO CRM project:
+Viết System Prompt (Layer 1) cho ITO CRM project. **Lấy thông tin trực tiếp từ `practice/` — không viết từ trí nhớ:**
 
 ```markdown
 # [Project Name] — Project Context

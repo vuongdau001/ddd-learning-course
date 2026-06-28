@@ -99,6 +99,8 @@ Event = đã xảy ra, không thể đảo ngược. Khi bạn viết "ResourceA
 
 ## 🏋️ Exercise — Viết Events và Commands
 
+> 📂 **Mở `practice/glossary/` trước khi bắt đầu.** Event và Command names phải dùng đúng thuật ngữ trong Glossary (Module 2). VD: nếu Glossary định nghĩa "Opportunity" thì event phải là `OpportunityQualified`, không phải `DealQualified`.
+
 ### Phần A: ITO — Opportunity Lifecycle (15 phút)
 
 Viết Event Storm cho "1 Opportunity từ khi có Lead đến khi Won":
@@ -132,6 +134,7 @@ Viết Event Storm cho "1 Order từ khi khách đặt đến khi giao xong":
 | Commands đúng imperative? | ☐ | ☐ |
 | Mỗi event có actor? | ☐ | ☐ |
 | ≥ 5 events? | ☐ | ☐ |
+| Tên khớp với `practice/glossary/`? | ☐ | ☐ |
 
 ---
 
