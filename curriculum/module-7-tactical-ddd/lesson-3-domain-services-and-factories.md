@@ -5,124 +5,185 @@ lesson: 3
 title: "Domain Services & Factories"
 duration: "30 phút"
 prerequisites: ["module-7/lesson-2"]
+narrative_phase: "tactical design"
+migration_phase: "Phase 2: Extract cross-aggregate logic"
+business_invariant: "Domain Service = stateless business logic cần multi-aggregate data; Factory = complex object creation; Domain Service ≠ Application Service"
 ---
 
-# Lesson 7.3: Domain Services & Factories
+# Lesson 7.3: Domain Services & Factories — "Khi logic không thuộc Entity nào"
 
-## 🎓 Concept — "Khi logic không thuộc về Entity nào"
+## 📍 Context — Bạn đang ở đây
 
-### Vấn đề: Đặt logic ở đâu?
+> Lesson 7.2 cho bạn Aggregate: Resource (Root) chứa Allocations, enforce `totalAllocation ≤ 100%`. Root = gác cổng, invariant = law. Nhưng có business logic **không thuộc 1 aggregate nào**: "Match resource cho project dựa trên skills" — logic này cần data từ Resource aggregate LẪN Project requirements. Đặt ở Resource? Không, Resource không biết Project. Đặt ở Project? Không, Project không biết Resource availability.
 
-```
-Matching Resource cho Project:
-- Cần biết Project requirements (skills, level, timeline)
-- Cần scan tất cả Resources (availability, skills)
-- Cần thuật toán matching (scoring, ranking)
+## 🔥 Tension — "Matching logic ở đâu?"
 
-Logic này thuộc Resource? → Không, Resource không biết Project requirements.
-Logic này thuộc Project? → Không, Project không biết Resource availability.
-→ Logic này thuộc "giữa 2 aggregates" → Domain Service
-```
+Sprint 7. Tuấn implement feature matching:
+
+> **Tuấn:** *"Hà cần tính năng 'auto-suggest resources for project'. Tôi cần scan tất cả Resources (skills, availability) + Project requirements (required skills, timeline, budget) + AI scoring. Logic này đặt ở đâu?"*
+>
+> **Dev A:** *"Đặt trong Resource entity? `resource.matchForProject(project)`?"*
+>
+> **Tuấn:** *"Sai. Resource entity không nên biết về Project structure. Và matching cần SCAN TẤT CẢ resources — 1 resource instance không có context của các resources khác."*
+
+**Dev B:** *"Vậy đặt trong Application Service?"*
+
+**Tuấn:** *"Cũng sai. Matching = business logic thuần túy (scoring algorithm, skill overlap calculation). Application Service chỉ ĐIỀU PHỐI workflow — load data, gọi logic, save kết quả. Business logic phải ở Domain layer."*
+
+> 💭 **Câu hỏi:** Logic cần multi-aggregate data, stateless, nhưng thuộc domain (business nói về "matching", "qualification", "utilization calculation"). Đó chính là **Domain Service** — concept thứ 3 trong tactical design.
+
+## 🎓 Explanation — Domain Service & Factory
+
+### Từ Business đến Technical
+
+**Business Invariant cần bảo vệ:**
+> *"Domain Service = stateless business logic cần data từ nhiều aggregates — nó sống ở Domain layer (KHÔNG phải Application layer). Factory = tạo complex Aggregate khi constructor quá phức tạp. Domain Service ≠ Application Service — Application Service ĐIỀU PHỐI, Domain Service TÍNH TOÁN."*
 
 ### Domain Service — Logic liên aggregate
 
-Domain Service là **operation thuộc domain nhưng không thuộc Entity/VO nào cụ thể:**
-
 ```typescript
-// ❌ SAI: Resource biết quá nhiều về Project
+// ❌ SAI: Entity biết quá nhiều về aggregate khác
 class Resource {
   matchForProject(project: Project): MatchScore { ... }
+  // → Resource coupling với Project, vi phạm aggregate boundary
 }
 
-// ✅ ĐÚNG: Domain Service kết nối 2 aggregates
+// ❌ SAI: Business logic trong Application Service
+class AllocateResourceUseCase {
+  execute() {
+    // ... SQL queries, scoring calculation, ranking ...
+    // → Application Service quá nặng, domain logic bị leak
+  }
+}
+
+// ✅ ĐÚNG: Domain Service kết nối multi-aggregate data
 class ResourceMatchingService {
   findBestMatches(
     requirements: ProjectRequirements,
     availableResources: List<Resource>
   ): List<MatchResult> {
-    // Scoring: skills match + availability + location
+    return availableResources
+      .map(r => this.score(r, requirements))
+      .filter(m => m.score > 0)
+      .sort((a, b) => b.score - a.score)
+  }
+
+  private score(resource: Resource, requirements: ProjectRequirements): MatchResult {
+    const skillOverlap = this.calculateSkillOverlap(resource.skills, requirements.requiredSkills)
+    const availabilityScore = resource.getAvailablePercentage() >= requirements.minPercentage ? 1 : 0
+    const seniorityMatch = resource.matchesSeniority(requirements.minLevel) ? 1 : 0
+    return new MatchResult(resource.id, skillOverlap * 0.5 + availabilityScore * 0.3 + seniorityMatch * 0.2)
   }
 }
 ```
 
-**3 dấu hiệu cần Domain Service:**
-1. Logic cần data từ **nhiều aggregates**
-2. Logic là **stateless** (không giữ state riêng)
-3. Logic là **domain concept** (business nói về nó, có tên trong Glossary)
+### 3 Dấu hiệu cần Domain Service
 
-### Ví dụ — ITO CRM
-
-| Domain Service | Mô tả | Tại sao không để trong Entity? |
+| Dấu hiệu | Câu hỏi | ITO Ví dụ |
 |---|---|---|
-| `ResourceMatchingService` | Matching resource → project | Cần cả Resource lẫn ProjectRequirements |
-| `UtilizationCalculator` | Tính utilization rate | Cần tổng hợp từ nhiều Allocations across Resources |
-| `OpportunityQualifier` | Đánh giá win probability | Cần data từ Account + Contact + Market |
+| **Multi-aggregate** | Logic cần data từ ≥2 aggregates? | Matching: cần Resource + ProjectRequirements |
+| **Stateless** | Logic không giữ state riêng — chỉ input → output? | Matching: input (resources, requirements) → output (ranked list) |
+| **Domain concept** | Business nói về nó, có tên trong Glossary? | "Resource Matching" = domain concept, Hà nói về nó |
 
-### Ví dụ — Logistics
+### ITO Domain Services
 
-| Domain Service | Mô tả | Tại sao không để trong Entity? |
-|---|---|---|
-| `RouteOptimizer` | Tìm route tối ưu | Cần tất cả Stops + Vehicle capacity + Traffic |
-| `CapacityChecker` | Kiểm tra xe đủ tải? | Cần tổng weight từ nhiều Shipments |
-| `ETACalculator` | Tính thời gian dự kiến | Cần Route + Traffic + Vehicle speed |
+| Domain Service | Input | Output | Tại sao Domain Service? |
+|---|---|---|---|
+| `ResourceMatchingService` | ProjectRequirements + List\<Resource\> | List\<MatchResult\> | Cần cả Resource lẫn Project data |
+| `UtilizationCalculator` | List\<Resource\> + DateRange | UtilizationReport | Tổng hợp từ nhiều Resource aggregates |
+| `OpportunityQualifier` | Opportunity + Account + MarketData | QualificationResult | Cần cross-aggregate + external data |
+| `BillingCalculator` | Contract + List\<Allocation\> | Invoice | Cross-aggregate: Contract × Allocations |
 
-### Factory — Tạo complex objects
+### Logistics Domain Services
 
-Factory pattern dùng khi **việc tạo object phức tạp:**
+| Domain Service | Input | Output | Tại sao Domain Service? |
+|---|---|---|---|
+| `RouteOptimizer` | List\<Stop\> + VehicleCapacity + TrafficData | OptimizedRoute | Multi-aggregate + external data |
+| `CapacityPlanner` | List\<Shipment\> + Vehicle | CapacityResult | Cross-aggregate: Shipment × Vehicle |
+| `ETACalculator` | Route + CurrentPosition + TrafficData | ETA | Cần Route + real-time data |
+
+### Domain Service ≠ Application Service
+
+```
+Domain Service:                     Application Service:
+├── Business logic (TÍNH TOÁN)       ├── Workflow (ĐIỀU PHỐI)
+├── Không biết DB, API, UI           ├── Biết Repository, Transaction
+├── Dùng domain language             ├── Orchestrate: load → call → save
+├── Stateless                        ├── Coordinate side effects
+└── Sống ở Domain Layer              └── Sống ở Application Layer
+
+VD:
+┌──────────────────────────────────────────────────┐
+│  Application Layer                                │
+│                                                   │
+│  AllocateResourceUseCase:                         │
+│    1. resource = resourceRepo.findById(id)        │ ← load
+│    2. resource.allocate(projectId, pct)            │ ← DOMAIN logic
+│    3. resourceRepo.save(resource)                  │ ← save
+│    4. eventBus.publish(ResourceAllocated)           │ ← side effect
+│                                                   │
+│  FindBestMatchUseCase:                             │
+│    1. resources = resourceRepo.findAvailable()     │ ← load
+│    2. matches = matchingService.findBest(req, res) │ ← DOMAIN SERVICE
+│    3. return matches                               │ ← return (no save)
+└──────────────────────────────────────────────────┘
+```
+
+### Factory — Tạo complex Aggregate
+
+Khi constructor quá phức tạp → Factory ẩn logic tạo:
 
 ```typescript
-// ❌ Constructor quá phức tạp
-const resource = new Resource(
-  generateId(),
-  name, email,
-  parseSkills(skillsInput),
-  initBenchStatus(),
-  validateAndCreateAllocations([])
-);
+// ❌ Constructor quá phức tạp — caller phải biết quá nhiều
+const opportunity = new Opportunity(
+  OpportunityId.generate(),
+  lead.accountId,
+  lead.contactInfo,
+  StageTransition.initial(),
+  WinProbability.fromLeadScore(lead.score),
+  Money.zero("VND"),
+  ResourceRequest.fromLeadRequirements(lead.requirements),
+  new Date()
+)
 
-// ✅ Factory ẩn logic tạo
-class ResourceFactory {
-  static createNew(name: string, email: string, skills: string[]): Resource {
-    return new Resource(
-      ResourceId.generate(),
-      name, email,
-      skills.map(s => Skill.parse(s)),
-      BenchStatus.initial(),
-      []
-    );
+// ✅ Factory ẩn logic tạo — express domain intent
+class OpportunityFactory {
+  static createFromLead(lead: Lead): Opportunity {
+    return new Opportunity(
+      OpportunityId.generate(),
+      lead.accountId,
+      lead.contactInfo,
+      StageTransition.initial(),                          // Start at "Qualification"
+      WinProbability.fromLeadScore(lead.score),           // Convert lead score
+      Money.zero(lead.currency),                          // No value yet
+      ResourceRequest.fromLeadRequirements(lead.requirements),
+      new Date()
+    )
   }
-  
-  static reconstitute(data: ResourceData): Resource {
-    // Tái tạo từ database — không validate lại
+
+  static reconstitute(data: OpportunityData): Opportunity {
+    // Tái tạo từ database — KHÔNG validate lại invariants
+    return new Opportunity(data.id, data.accountId, ...)
   }
 }
 ```
 
 **Khi nào cần Factory:**
-1. Logic tạo phức tạp (>3 bước)
-2. Tạo từ nhiều nguồn khác nhau (DB, API, form)
-3. Cần đảm bảo invariants ngay khi tạo
 
-### Domain Service ≠ Application Service
+| Cần Factory | Constructor đủ |
+|---|---|
+| Logic tạo > 3 bước | Constructor ≤ 3 params |
+| Tạo từ nhiều nguồn (DB, API, form) | Tạo trực tiếp |
+| Cần transform data trước khi tạo | Data đã đúng format |
+| Cần domain-level validation khi tạo | Invariants đơn giản |
 
-```
-Domain Service:
-  - Logic NGHIỆP VỤ (matching, calculation, qualification)
-  - Không biết DB, API, UI
-  - Dùng domain language
+### ⚖️ Trade-offs — Domain Service
 
-Application Service:
-  - ĐIỀU PHỐI workflow (load → call domain → save)
-  - Biết DB (repository), biết transaction
-  - Không chứa business logic
-
-VD:
-  AllocateResourceUseCase (Application Service):
-    1. Load resource từ repo
-    2. Call resource.allocate(projectId, %)    ← domain logic
-    3. Save resource qua repo
-    4. Publish ResourceAllocated event
-```
+| | Dùng Domain Service đúng | Lạm dụng Domain Service |
+|---|---|---|
+| **Kết quả** | Entity rich (logic inside), Service orchestrate | **Anemic Domain Model** — Entity chỉ getter/setter, MỌI logic ở Service |
+| **Dấu hiệu** | Entity có methods, Service chỉ cross-aggregate | Entity = data bag, Service = God class |
+| **Rule** | Nếu logic chỉ cần 1 aggregate → ĐẶT TRONG ENTITY | Nếu Entity trở thành data-only → refactor logic VÀO Entity |
 
 ---
 
@@ -130,9 +191,7 @@ VD:
 
 ### Phần A: ITO — Liệt kê (10 phút)
 
-Liệt kê ≥3 Domain Services cho ITO CRM:
-
-| Service | Input | Output | Tại sao là Domain Service? |
+| Service | Input | Output | Tại sao là Domain Service (không Entity)? |
 |---|---|---|---|
 | 1. | | | |
 | 2. | | | |
@@ -148,12 +207,16 @@ Liệt kê ≥3 Domain Services cho ITO CRM:
 
 ### Phần C: Factory design (5 phút)
 
-Viết pseudo-code Factory cho Opportunity:
+Viết Factory cho Trip (Logistics):
 
 ```typescript
-class OpportunityFactory {
-  static createFromLead(lead: Lead): Opportunity {
-    // viết logic tạo Opportunity từ Lead...
+class TripFactory {
+  static createNew(
+    stops: StopData[],
+    vehicleId: VehicleId,
+    driverId: DriverId
+  ): Trip {
+    // Viết logic: validate stops, calculate route, enforce capacity...
   }
 }
 ```
@@ -162,17 +225,19 @@ class OpportunityFactory {
 
 ## 🪞 Reflect
 
-1. **Domain Service có nên gọi Repository không?** Gợi ý: thuần DDD nói không (Application Service load data, pass cho Domain Service). Thực tế, một số teams cho phép.
+1. **Domain Service có nên gọi Repository không?** → Thuần DDD nói **không** — Application Service load data, pass cho Domain Service. Thực tế, một số teams cho phép — nhưng risk: Domain Service coupling với infrastructure. **Recommendation:** pass data vào, không inject repo.
 
-2. **"Nếu logic không biết đặt đâu → Domain Service" — pattern này nguy hiểm thế nào?** Gợi ý: lạm dụng → Anemic Domain Model (Entity chỉ có getters/setters, mọi logic ở Service).
+2. **"Không biết đặt đâu → Domain Service" — nguy hiểm thế nào?** → **Anemic Domain Model:** Entity thành data bag (chỉ getter/setter), MỌI logic ở Service. Kết quả: Entity vô nghĩa, Service God class. **Rule:** nếu logic chỉ cần 1 aggregate → đặt TRONG Entity trước. Chỉ dùng Domain Service khi truly cross-aggregate.
 
-3. **Factory có phải Tactical Pattern bắt buộc?** Khi nào constructor đủ dùng?
+3. **Factory có bắt buộc?** → Không. Nếu constructor đơn giản (≤3 params, không transform) → constructor đủ. Factory chỉ cần khi tạo phức tạp hoặc tạo từ nhiều nguồn. **Over-engineering Factory cho simple objects = waste.**
 
 ---
 
-## ✅ Hoàn thành lesson khi
-- [ ] Phân biệt Domain Service vs Application Service
-- [ ] Liệt kê ≥3 Domain Services cho ITO
-- [ ] Liệt kê ≥3 Domain Services cho Logistics
-- [ ] Viết 1 Factory pseudo-code
-- [ ] Trả lời ≥2/3 câu hỏi reflection
+## ✅ Completion Checklist
+- [ ] **Recall:** Phân biệt Domain Service vs Application Service + 3 dấu hiệu Domain Service
+- [ ] **Apply:** Liệt kê ≥3 Domain Services cho ITO + ≥3 cho Logistics
+- [ ] **Analyze:** Giải thích tại sao matching logic KHÔNG thuộc Resource entity — liên hệ với Anemic Domain Model anti-pattern
+
+---
+
+> 🔗 **Tiếp theo:** Domain Service orchestrate logic, Entity enforce invariants, Factory tạo objects. Nhưng tất cả cần **persistence** — lưu và load aggregates từ database. Bài tiếp — *Repository Pattern* — sẽ trả lời: Domain code KHÔNG biết database tồn tại. Repository = abstraction layer giữa Domain và Database. 1 Repository per Aggregate.

@@ -5,20 +5,42 @@ lesson: 1
 title: "Entities & Value Objects"
 duration: "35 phút"
 prerequisites: ["module-6"]
+narrative_phase: "tactical design"
+migration_phase: "Phase 2: Implement domain model bên trong Bounded Context"
+business_invariant: "Entity = có identity + lifecycle; Value Object = immutable + so sánh bằng value; Prefer VOs over Entities; VO KHÔNG CÓ repository riêng"
 ---
 
-# Lesson 7.1: Entities & Value Objects
+# Lesson 7.1: Entities & Value Objects — "Cùng là object, nhưng khác bản chất"
 
-## 🎓 Concept — "Cùng là object, nhưng khác nhau về bản chất"
+## 📍 Context — Bạn đang ở đây
 
-### Vấn đề: Mọi thứ đều là class?
+> Module 1-6 = **Strategic Design** — quyết định "WHAT" (Domain Map, Glossary, Event Storm) và "WHERE" (Bounded Contexts, Context Map, Knowledge Architecture). Bạn biết ITO có 6 Bounded Contexts, biết integration patterns, biết invariants.
+>
+> Bây giờ bắt đầu **Tactical Design** — quyết định "HOW": viết code **bên trong** 1 Bounded Context thế nào? Khi Tuấn tạo `Resource` object — nó có identity riêng (Entity) hay chỉ là giá trị (Value Object)? `60% allocation` có cần ID không? `Money(50000, "VND")` có khác `Money(50000, "VND")` khác không?
 
-Khi code, dev thường tạo class cho mọi thứ: `Resource`, `Skill`, `Money`, `Address`. Nhưng trong DDD, có 2 loại object khác nhau cơ bản:
+## 🔥 Tension — "Tại sao Skill có ID?"
 
-```
-Entity = "Tôi là AI, dù đổi tên thì vẫn là TÔI" → CÓ identity
-Value Object = "100.000 VND nào cũng như nhau" → KHÔNG CÓ identity, so bằng giá trị
-```
+Sprint 5. Dev A implement Resource Context:
+
+> **Dev A:** *"Tôi tạo class cho mọi thứ: Resource, Skill, AllocationPercentage, DateRange, Money. Mỗi class đều có ID (UUID) vì tôi cần lưu DB."*
+
+Code review. Tuấn phát hiện bug:
+
+> **Tuấn:** *"Dev A, Skill có ID `skill-001`. Nhưng khi 2 resource cùng có 'Java Senior' — bạn tạo 2 records trong DB: `skill-001` (Java Senior) và `skill-002` (Java Senior). 2 records, cùng giá trị. Khi query 'ai biết Java Senior?' — bạn query thế nào?"*
+>
+> **Dev A:** *"Join bằng skill_id... nhưng skill-001 và skill-002 cùng là Java Senior... Tôi phải so sánh bằng name thay vì ID. Vậy ID vô nghĩa?"*
+
+**Minh:**
+> *"Không phải mọi object đều cần ID. 'Java Senior' = 'Java Senior' — bất kể nó thuộc resource nào. Đó là **Value Object**. Resource thì khác — Nguyễn Văn A (R001) ≠ Nguyễn Văn B (R002) dù cả hai đều biết Java. Đó là **Entity**. Phân biệt 2 loại này = bước đầu tiên của Tactical Design."*
+
+> 💭 **Câu hỏi:** Mọi thứ đều là class — nhưng KHÔNG phải mọi thứ đều cần ID. Khi nào cần identity (Entity)? Khi nào chỉ cần value (Value Object)? Và tại sao phân biệt sai → bug + complexity?
+
+## 🎓 Explanation — 2 loại Object trong Domain
+
+### Từ Business đến Technical
+
+**Business Invariant cần bảo vệ:**
+> *"Entity = có identity (ID) + lifecycle (tạo/sửa/xóa) → so sánh bằng ID. Value Object = immutable + so sánh bằng value → KHÔNG có ID, KHÔNG có repository riêng. Prefer Value Objects over Entities — VO đơn giản hơn, ít bug hơn, dễ test hơn."*
 
 ### Entity — Có Identity
 
@@ -26,74 +48,156 @@ Entity là object có **danh tính riêng** — dù thay đổi thuộc tính, n
 
 ```
 Resource (Entity):
-  id: R001
-  name: "Nguyễn Văn A"       ← đổi tên vẫn là R001
-  email: "a@ito.com"          ← đổi email vẫn là R001
-  skills: [Java, React]       ← thêm skill vẫn là R001
+  id: R001                        ← IDENTITY
+  name: "Nguyễn Văn A"           ← đổi tên → vẫn là R001
+  email: "a@ito.com"             ← đổi email → vẫn là R001
+  skills: [Java, React]          ← thêm skill → vẫn là R001
 
-→ Identity = id, KHÔNG PHẢI tập hợp thuộc tính
+→ R001 đổi tên thành "Nguyễn Văn Alpha" → VẪN LÀ R001
+→ 2 resource trùng tên → KHÁC resource (R001 ≠ R002)
+→ Identity = ID, KHÔNG PHẢI tập hợp thuộc tính
 ```
 
-**Tiêu chí nhận biết Entity:**
-1. Cần phân biệt 2 instance dù giá trị giống nhau? → Entity
-2. Có lifecycle (tạo → sửa → xóa)? → Entity
-3. Cần tracking theo thời gian? → Entity
+**3 tiêu chí nhận biết Entity:**
+
+| Tiêu chí | Câu hỏi | Nếu "Có" |
+|---|---|---|
+| **Distinguish** | Cần phân biệt 2 instance dù giá trị giống nhau? | → Entity |
+| **Lifecycle** | Có lifecycle (tạo → sửa → xóa)? | → Entity |
+| **Tracking** | Cần tracking theo thời gian? | → Entity |
 
 ### Value Object — Không có Identity
 
-Value Object là object **bằng nhau khi giá trị bằng nhau** — không cần ID.
+Value Object **bằng nhau khi giá trị bằng nhau** — không cần ID.
 
 ```
 Money (Value Object):
   amount: 100000
   currency: "VND"
 
-→ Money(100000, "VND") == Money(100000, "VND")
-→ Không cần id, không cần phân biệt "đồng 100K này" với "đồng 100K kia"
+→ Money(100000, "VND") == Money(100000, "VND")  ← SO SÁNH BẰNG GIÁ TRỊ
+→ Không cần phân biệt "đồng 100K này" với "đồng 100K kia"
+→ IMMUTABLE: muốn đổi → tạo object MỚI
+→ KHÔNG có lifecycle riêng
 ```
 
-**Tiêu chí nhận biết Value Object:**
-1. 2 instance có cùng giá trị = giống hệt nhau? → VO
-2. Immutable (không đổi, thay bằng object mới)? → VO
-3. Không có lifecycle riêng? → VO
+**3 tiêu chí nhận biết Value Object:**
 
-### So sánh — ITO CRM
-
-| Object | Entity hay VO? | Tại sao |
+| Tiêu chí | Câu hỏi | Nếu "Có" |
 |---|---|---|
-| Resource | **Entity** | Cần phân biệt từng người (R001 ≠ R002) |
-| Skill | **Value Object** | "Java Senior" = "Java Senior", không cần ID |
-| Allocation | **Entity** | Cần track: ai, dự án nào, bao lâu |
-| AllocationPercentage | **Value Object** | 60% = 60%, immutable |
-| DateRange | **Value Object** | 01/01-31/01 = 01/01-31/01 |
-| Project | **Entity** | Mỗi project có identity riêng |
+| **Equality** | 2 instance cùng giá trị = giống hệt nhau? | → VO |
+| **Immutable** | Không đổi, thay bằng object mới? | → VO |
+| **No lifecycle** | Không tạo/sửa/xóa riêng? | → VO |
 
-### So sánh — Logistics
+### Apply cho ITO CRM
 
-| Object | Entity hay VO? | Tại sao |
-|---|---|---|
-| Vehicle | **Entity** | Mỗi xe có biển số riêng |
-| Route | **Entity** | Mỗi tuyến đường có lifecycle |
-| GeoLocation | **Value Object** | (10.762, 106.660) = (10.762, 106.660) |
-| Weight | **Value Object** | 5 tấn = 5 tấn |
-| Driver | **Entity** | Cần phân biệt từng tài xế |
-| FuelConsumption | **Value Object** | 8L/100km = 8L/100km |
+| Object | Entity hay VO? | Tại sao | Ví dụ |
+|---|---|---|---|
+| Resource | **Entity** | R001 ≠ R002 dù cùng skill | Nguyễn Văn A ≠ Nguyễn Văn B |
+| Skill | **Value Object** | "Java Senior" = "Java Senior" | Không cần ID, so sánh bằng (name, level) |
+| Allocation | **Entity** | Cần track: ai → dự án nào → bao lâu | Alloc-001: R001 → Project X, 60% |
+| AllocationPercentage | **Value Object** | 60% = 60%, immutable | Muốn đổi → tạo VO mới |
+| Money | **Value Object** | 50M VND = 50M VND | `Money(50000000, "VND")` |
+| DateRange | **Value Object** | 01/01-31/03 = 01/01-31/03 | `DateRange(start, end)` |
+| Project | **Entity** | Mỗi project có ID, lifecycle | PRJ-001: "CRM Migration" |
+| Opportunity | **Entity** | Sales pipeline tracking | OPP-001: "TechCorp CRM Deal" |
+
+### Apply cho Logistics
+
+| Object | Entity hay VO? | Tại sao | Ví dụ |
+|---|---|---|---|
+| Vehicle | **Entity** | Mỗi xe có biển số riêng | VH-001: "51F-12345" |
+| Route | **Entity** | Mỗi tuyến có lifecycle (planned → active → completed) | RT-001: HCM → Đà Nẵng |
+| GeoLocation | **Value Object** | (10.762, 106.660) = (10.762, 106.660) | Tọa độ không cần ID |
+| Weight | **Value Object** | 5 tấn = 5 tấn | `Weight(5000, "kg")` |
+| Driver | **Entity** | Cần phân biệt từng tài xế | DRV-001: "Trần Văn C" |
+| TimeWindow | **Value Object** | 8:00-12:00 = 8:00-12:00 | `TimeWindow(08:00, 12:00)` |
+
+### Code Implementation
+
+**Entity — Resource:**
+```typescript
+class Resource {
+  readonly id: ResourceId          // Identity — BẤT BIẾN
+  private name: string             // Có thể thay đổi
+  private email: string            // Có thể thay đổi
+  private skills: Skill[]          // Có thể thêm/bớt
+  private status: ResourceStatus   // Có lifecycle
+
+  addSkill(skill: Skill): void {
+    if (this.skills.some(s => s.equals(skill))) return  // VO comparison
+    this.skills.push(skill)
+  }
+
+  equals(other: Resource): boolean {
+    return this.id === other.id  // SO SÁNH BẰNG ID — không quan tâm name, email
+  }
+}
+```
+
+**Value Object — AllocationPercentage:**
+```typescript
+class AllocationPercentage {
+  private readonly value: number   // IMMUTABLE — không setter
+
+  constructor(value: number) {
+    if (value <= 0) throw new Error("Must be positive")
+    if (value > 100) throw new Error("Cannot exceed 100%")
+    this.value = value
+  }
+
+  add(other: AllocationPercentage): AllocationPercentage {
+    return new AllocationPercentage(this.value + other.value)  // TẠO MỚI, không sửa
+  }
+
+  equals(other: AllocationPercentage): boolean {
+    return this.value === other.value  // SO SÁNH BẰNG GIÁ TRỊ
+  }
+}
+```
+
+**Value Object — Money:**
+```typescript
+class Money {
+  private readonly amount: number
+  private readonly currency: string
+
+  constructor(amount: number, currency: string) {
+    if (amount < 0) throw new Error("Cannot be negative")
+    this.amount = amount
+    this.currency = currency
+  }
+
+  add(other: Money): Money {
+    if (this.currency !== other.currency) throw new Error("Currency mismatch")
+    return new Money(this.amount + other.amount, this.currency)  // IMMUTABLE
+  }
+
+  equals(other: Money): boolean {
+    return this.amount === other.amount && this.currency === other.currency
+  }
+}
+```
 
 ### Quy tắc thiết kế
 
 ```
-Entity:
-  ✅ Có ID (UUID hoặc meaningful ID)
-  ✅ Mutable (thay đổi theo thời gian)
-  ✅ So sánh bằng ID
-  ✅ Có repository để lưu/lấy
-
-Value Object:
-  ✅ KHÔNG CÓ ID
-  ✅ Immutable (tạo mới thay vì sửa)
-  ✅ So sánh bằng tất cả thuộc tính
-  ✅ KHÔNG CÓ repository riêng (nằm trong Entity)
+Entity:                              Value Object:
+  ✅ Có ID (UUID hoặc meaningful)      ✅ KHÔNG CÓ ID
+  ✅ Mutable (thay đổi theo TG)        ✅ Immutable (tạo mới thay vì sửa)
+  ✅ So sánh bằng ID                   ✅ So sánh bằng TẤT CẢ thuộc tính
+  ✅ Có Repository để lưu/lấy          ✅ KHÔNG có Repository riêng
+  ✅ Ít nhất 1 per context             ✅ Nên có NHIỀU hơn Entity
 ```
+
+### ⚖️ Trade-offs — Entity vs Value Object
+
+| | Dùng Entity khi không cần | Dùng VO khi nên Entity |
+|---|---|---|
+| **Hậu quả** | Skill có ID vô nghĩa, DB bloat, query phức tạp | Mất tracking, mất history, không distinguish |
+| **Dấu hiệu** | "2 records giống nhau nhưng ID khác" (Dev A bug) | "Cần tìm lại record cụ thể nhưng không có ID" |
+| **Sửa** | Chuyển thành VO, bỏ ID | Thêm ID, tạo Repository |
+| **Rule** | **Prefer VO** — default mọi thứ là VO, chỉ promote lên Entity khi cần | Promote khi cần distinguish/track/lifecycle |
 
 ---
 
@@ -101,9 +205,7 @@ Value Object:
 
 ### Phần A: ITO CRM (10 phút)
 
-Phân loại các object sau:
-
-| Object | Entity hay VO? | Lý do |
+| Object | Entity hay VO? | Lý do (dùng 3 tiêu chí) |
 |---|---|---|
 | Account (khách hàng) | | |
 | ContactInfo (email, phone) | | |
@@ -111,7 +213,7 @@ Phân loại các object sau:
 | WinProbability (0-100%) | | |
 | Contract | | |
 | ContractValue (số tiền) | | |
-| BenchStatus (đang bench hay không) | | |
+| BenchStatus (bench hay không) | | |
 | SkillLevel (Junior/Mid/Senior) | | |
 
 ### Phần B: Logistics (10 phút)
@@ -127,17 +229,21 @@ Phân loại các object sau:
 
 ### Phần C: Code sketch (10 phút)
 
-Viết pseudo-code cho 1 Entity và 1 VO từ ITO:
+Viết code cho 1 Entity và 1 Value Object từ ITO:
 
 ```typescript
-// Entity
-class Resource {
-  // viết thuộc tính + phương thức...
+// Entity — Opportunity
+class Opportunity {
+  readonly id: OpportunityId
+  // viết thuộc tính...
+  // viết equals() — so sánh bằng ID...
 }
 
-// Value Object
-class AllocationPercentage {
-  // viết thuộc tính + equals()...
+// Value Object — WinProbability
+class WinProbability {
+  private readonly value: number
+  // viết constructor (validation)...
+  // viết equals() — so sánh bằng value...
 }
 ```
 
@@ -145,17 +251,19 @@ class AllocationPercentage {
 
 ## 🪞 Reflect
 
-1. **Tại sao "Address" thường là Value Object nhưng đôi khi là Entity?** Gợi ý: nếu công ty bất động sản, mỗi address cần tracking riêng → Entity.
+1. **"Address" thường là VO — nhưng khi nào là Entity?** → Nếu bạn là công ty **bất động sản** — mỗi address cần tracking riêng (giá, lịch sử giao dịch) → Entity. Nếu address chỉ là "nơi giao hàng" → VO. **Context quyết định** — cùng concept, khác context, khác classification.
 
-2. **Value Object PHẢI immutable — tại sao?** Gợi ý: nếu 2 Entity share cùng 1 VO và VO bị sửa → side effect.
+2. **Value Object PHẢI immutable — tại sao?** → Nếu 2 Entity share cùng 1 VO instance và VO bị sửa → **side effect** — Entity A sửa VO → Entity B bị ảnh hưởng mà không biết. Immutable = safe sharing. Muốn thay đổi → tạo VO mới.
 
-3. **Trong DDD, nên có nhiều Value Objects hơn Entities — tại sao?** Gợi ý: VO đơn giản hơn, ít bug hơn, dễ test hơn.
+3. **Nên có nhiều VOs hơn Entities — tại sao?** → VO: đơn giản hơn (no ID, no lifecycle), ít bug (immutable, no side effect), dễ test (equals = value comparison), DB nhẹ (embedded, no separate table). **Rule of thumb:** 70% VO, 30% Entity.
 
 ---
 
-## ✅ Hoàn thành lesson khi
-- [ ] Phân biệt Entity vs Value Object bằng 3 tiêu chí
-- [ ] Phân loại ≥6 objects cho ITO CRM
-- [ ] Phân loại ≥4 objects cho Logistics
-- [ ] Viết pseudo-code cho 1 Entity + 1 VO
-- [ ] Trả lời ≥2/3 câu hỏi reflection
+## ✅ Completion Checklist
+- [ ] **Recall:** Phân biệt Entity vs VO bằng 3 tiêu chí + giải thích tại sao VO immutable
+- [ ] **Apply:** Phân loại ≥6 objects cho ITO + ≥4 cho Logistics
+- [ ] **Analyze:** Viết code sketch + giải thích tại sao Skill có ID = bug (Dev A scenario)
+
+---
+
+> 🔗 **Tiếp theo:** Entity và VO = building blocks cơ bản. Nhưng chúng không sống đơn lẻ — chúng tạo thành **nhóm** (Aggregate). Bài tiếp — *Aggregates & Roots* — sẽ trả lời: `Allocation` thuộc Aggregate nào? Ai là Aggregate Root? Và tại sao invariant `total_allocation ≤ 100%` phải enforce **bên trong** Aggregate boundary?

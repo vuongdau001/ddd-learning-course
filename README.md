@@ -96,14 +96,17 @@ Khóa học xây dựng kiến thức theo 3 tầng chồng lên nhau. Mỗi mod
 
 > 💡 **Mọi artifact trong khóa học này đều phục vụ hai đối tượng: con người (collaboration) và AI (automation).** Bạn sẽ hiểu tại sao khi đến Stage 3.
 
-**Phương pháp học: CEER**
+**Phương pháp học: CTEER v2.0 (Business-First)**
 
 | Bước | Ý nghĩa | Diễn ra như thế nào |
 |---|---|---|
-| **C**oncept | AI giảng lý thuyết | Storytelling + Socratic questioning |
-| **E**xample | Ví dụ thực tế | Case study ITO CRM + Logistics |
-| **E**xercise | Bài tập thực hành | Bạn tự làm, AI review |
-| **R**eflect | Phản tư | Câu hỏi "tại sao" và "nếu...thì sao" |
+| 📍 **C**ontext | Bạn đang ở đâu | AI nhắc lại vị trí trong lộ trình, kết nối bài trước |
+| 🔥 **T**ension | Business problem | AI kể câu chuyện ITO Corp — vấn đề cần giải quyết |
+| 🎓 **E**xplanation | Concept + pattern | Business Invariant trước → Technical sau, ITO + Logistics |
+| 🏋️ **E**xercise | Bài tập thực hành | Bạn tự làm, AI hướng dẫn step-by-step |
+| 🪞 **R**eflect | Phản tư | Câu hỏi "tại sao" và trade-offs |
+
+> 💡 **Mọi bài học đều bắt đầu bằng Tension** — một vấn đề business thực tế tại ITO Corp. Bạn sẽ hiểu *tại sao* trước khi học *như thế nào*.
 
 ---
 

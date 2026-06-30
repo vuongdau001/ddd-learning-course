@@ -5,126 +5,190 @@ lesson: 2
 title: "Event Sourcing"
 duration: "40 phút"
 prerequisites: ["module-8/lesson-1"]
+narrative_phase: "advanced patterns"
+migration_phase: "Phase 3: Event-driven persistence cho audit + temporal queries"
+business_invariant: "Event Sourcing = lưu events (lịch sử), KHÔNG lưu state (snapshot); Rebuild state = replay events; Projections = read models từ events; Snapshot = optimization cho performance"
 ---
 
-# Lesson 8.2: Event Sourcing — Lưu "chuyện gì đã xảy ra"
+# Lesson 8.2: Event Sourcing — "Lưu chuyện gì đã xảy ra, không lưu trạng thái"
 
-## 🎓 Concept — "Đừng lưu trạng thái, hãy lưu lịch sử"
+## 📍 Context — Bạn đang ở đây
 
-### Vấn đề: State-based storage mất thông tin
+> Lesson 8.1 CQRS tách Read/Write models. Write side vẫn lưu **STATE** (latest snapshot trong DB). Nhưng có bài toán cần biết **LỊCH SỬ**: "Opportunity-001 chuyển từ Lead → Qualified khi nào? Ai thay đổi value từ 300K → 500K? Lúc nào bị reject rồi mở lại?" State-based = mất lịch sử. Event Sourcing = lưu MỌI SỰ KIỆN → rebuild state bất kỳ thời điểm.
+
+## 🔥 Tension — "State-based mất lịch sử"
+
+Sprint 10. Audit yêu cầu:
+
+> **CFO ITO:** *"Opportunity-001 vừa Won với giá 500M. Tôi cần biết: giá ban đầu bao nhiêu? Ai thay đổi? Tại sao tăng từ 300M lên 500M? Timeline chính xác."*
+
+> **Dev B:** *"Database chỉ lưu row hiện tại: `stage: Won, value: 500M, updated_at: 2026-06-28`. Tôi không biết value trước đó, không biết ai đổi, không biết lúc nào."*
+
+> **CFO:** *"Thế có nghĩa là chúng ta không có audit trail? Compliance yêu cầu full traceability!"*
+
+**Tuấn:**
+> *"State-based = chỉ lưu snapshot cuối. Giống camera chỉ chụp 1 ảnh cuối ngày — không biết chuyện gì xảy ra trong ngày. **Event Sourcing** = camera quay liên tục — lưu MỌI SỰ KIỆN. Muốn biết state tại bất kỳ thời điểm → replay events đến thời điểm đó."*
+
+> 💭 **Câu hỏi:** Khi nào cần biết "chuyện gì đã xảy ra" chứ không chỉ "trạng thái hiện tại"? Finance, legal, audit — mọi ngành cần accountability đều cần Event Sourcing.
+
+## 🎓 Explanation — Event Sourcing
+
+### Từ Business đến Technical
+
+**Business Invariant cần bảo vệ:**
+> *"Event Sourcing = lưu immutable event stream (append-only log), KHÔNG lưu mutable state. State = replay(events). Projection = read model từ events. Snapshot = optimization — cache state mỗi N events để avoid full replay."*
+
+### State-based vs Event Sourcing
 
 ```
-Truyền thống (State-based):
-  Opportunity row:
-    stage: "Won"
-    value: 500,000
-    updated_at: 2026-06-28
-
-  → Không biết:
-    - Lúc nào chuyển từ Lead → Qualify?
-    - Ai thay đổi value từ 300K → 500K?
-    - Opportunity bị reject rồi mở lại chưa?
-```
-
-### Event Sourcing = Lưu mọi sự kiện
-
-```
-Event Store cho Opportunity-001:
-
-1. OpportunityCreated        { value: 300K, account: "ABC Corp" }      2026-01-15
-2. OpportunityQualified      { qualifiedBy: "PM Loan" }                2026-02-01
-3. ValueUpdated              { oldValue: 300K, newValue: 450K }        2026-02-15
-4. ProposalSubmitted         { proposalId: "P-001" }                   2026-03-01
-5. ValueUpdated              { oldValue: 450K, newValue: 500K }        2026-03-10
-6. OpportunityWon            { contractId: "C-001", closedBy: "VP" }   2026-03-20
-
-→ Biết CHÍNH XÁC mọi thứ đã xảy ra
-→ Có thể "replay" từ đầu → rebuild state bất kỳ thời điểm nào
+State-based (truyền thống):            Event Sourcing:
+┌─────────────────────┐                ┌──────────────────────────────────────────┐
+│ Opportunity row:    │                │ Event Store (Opportunity-001):           │
+│   stage: "Won"      │                │                                          │
+│   value: 500M       │                │ 1. OpportunityCreated  { value: 300M }   │
+│   updated_at: 06/28 │                │ 2. Qualified           { by: "PM Loan" } │
+│                     │                │ 3. ValueUpdated        { 300M → 450M }   │
+│ → MẤT lịch sử      │                │ 4. ProposalSubmitted   { id: "P-001" }   │
+│ → Không biết ai đổi │                │ 5. ValueUpdated        { 450M → 500M }   │
+│ → Không audit được  │                │ 6. OpportunityWon      { contract: C-001 }│
+└─────────────────────┘                │                                          │
+                                       │ → FULL lịch sử                           │
+                                       │ → Replay → state tại BẤT KỲ thời điểm   │
+                                       │ → Immutable (append-only, never delete)   │
+                                       └──────────────────────────────────────────┘
 ```
 
 ### Rebuild State từ Events
 
 ```typescript
-function rebuildOpportunity(events: DomainEvent[]): Opportunity {
-  let state = Opportunity.initial();
-  
-  for (const event of events) {
+class Opportunity {
+  private stage: OpportunityStage
+  private value: Money
+  private accountId: AccountId
+
+  // Replay events → rebuild state
+  static fromEvents(events: DomainEvent[]): Opportunity {
+    const opp = new Opportunity()
+    for (const event of events) {
+      opp.apply(event)
+    }
+    return opp
+  }
+
+  private apply(event: DomainEvent): void {
     switch (event.type) {
       case "OpportunityCreated":
-        state.value = event.data.value;
-        state.stage = "Lead";
-        break;
+        this.stage = OpportunityStage.Lead
+        this.value = Money.from(event.data.value, event.data.currency)
+        this.accountId = event.data.accountId
+        break
       case "OpportunityQualified":
-        state.stage = "Qualified";
-        break;
+        this.stage = OpportunityStage.Qualified
+        break
       case "ValueUpdated":
-        state.value = event.data.newValue;
-        break;
+        this.value = Money.from(event.data.newValue, event.data.currency)
+        break
       case "OpportunityWon":
-        state.stage = "Won";
-        state.contractId = event.data.contractId;
-        break;
+        this.stage = OpportunityStage.Won
+        break
     }
   }
-  return state;
+
+  // State tại thời điểm bất kỳ
+  static atPointInTime(events: DomainEvent[], until: Date): Opportunity {
+    const filtered = events.filter(e => e.timestamp <= until)
+    return Opportunity.fromEvents(filtered)
+  }
 }
 ```
 
-### Projection — Read models từ Events
+### Projections — Read Models từ Events
 
 ```
-Event Stream → Projection → Read Model
+Event Stream          →  Projection Handler  →  Read Model
+──────────────────────────────────────────────────────────────
+OpportunityCreated    →  ProjectionHandler   →  SalesPipelineView (kanban)
+OpportunityQualified  →  ProjectionHandler   →  SalesPipelineView (move card)
+ValueUpdated          →  ProjectionHandler   →  RevenueReportView (update total)
+OpportunityWon        →  ProjectionHandler   →  WinRateAnalyticsView (recalc)
 
-Events:                          Projections:
-OpportunityCreated          →   OpportunityListView (table)
-OpportunityQualified        →   SalesPipelineView (kanban)
-ValueUpdated                →   RevenueReportView (chart)
-OpportunityWon              →   WinRateAnalyticsView (dashboard)
-
-→ Cùng events, nhiều views khác nhau
-→ Thêm view mới? Replay events → build view mới!
+→ Cùng events, nhiều projections khác nhau
+→ Thêm view mới? Replay ALL events → build view từ đầu!
+→ CQRS + Event Sourcing = natural combo
 ```
 
-### Ví dụ — ITO CRM
+### Apply cho ITO CRM
 
 **Opportunity Event Stream:**
 ```
-OpportunityCreated → Qualified → ProposalSubmitted → Won
-                                                    → Lost (alternative)
+Timeline Opportunity-001:
+  Jan 15: OpportunityCreated     { value: 300M, account: "TechCorp" }
+  Feb 01: OpportunityQualified   { qualifiedBy: "PM Loan" }
+  Feb 15: ValueUpdated           { 300M → 450M, reason: "scope expanded" }
+  Mar 01: ProposalSubmitted      { proposalId: "P-001" }
+  Mar 10: ValueUpdated           { 450M → 500M, reason: "premium pricing" }
+  Mar 20: OpportunityWon         { contractId: "C-001", closedBy: "VP" }
+
+→ CFO query: "State tại Feb 15?" → replay 1-3 → { stage: Qualified, value: 450M }
+→ Audit: "Ai đổi value?" → events 3, 5 → PM Loan, VP
 ```
 
 **Resource Event Stream:**
 ```
-ResourceOnboarded → SkillAdded → Allocated(60%, ProjA) 
-→ Allocated(30%, ProjB) → Deallocated(ProjA) → Benched
+Timeline Resource R001 (Nguyễn Văn A):
+  Jan 01: ResourceOnboarded      { name: "NVA", skills: ["Java"] }
+  Jan 15: SkillAdded             { skill: "React" }
+  Feb 01: ResourceAllocated      { project: "PRJ-X", percentage: 60% }
+  Mar 01: ResourceAllocated      { project: "PRJ-Y", percentage: 30% }
+  Apr 01: ResourceDeallocated    { project: "PRJ-X" }
+  Apr 06: ResourceBenched        { reason: "no active project" }
 ```
 
-### Ví dụ — Logistics
+### Apply cho Logistics
 
 **Shipment Event Stream:**
 ```
-ShipmentCreated → PickedUp → InTransit → DeliveryAttempted 
-→ DeliveryFailed(reason) → Rescheduled → Delivered(POD)
+Timeline Shipment SH-001:
+  08:00: ShipmentCreated         { origin: HCM, dest: Đà Nẵng }
+  08:30: ShipmentPickedUp        { driver: DRV-001, vehicle: VH-001 }
+  12:00: InTransit               { location: Nha Trang }
+  16:00: DeliveryAttempted       { status: "customer absent" }
+  16:05: DeliveryFailed          { reason: "no one at address" }
+  Next day 09:00: Rescheduled    { newTime: "10:00-12:00" }
+  Next day 10:30: Delivered      { POD: "signed by Trần Văn B" }
 ```
 
-### Khi nào dùng Event Sourcing?
+### Snapshot — Performance Optimization
 
-| Phù hợp | Không phù hợp |
+```
+Problem: Resource R001 có 10,000 events → replay mỗi lần load = slow
+
+Solution: Snapshot mỗi 100 events
+  Event 1-100:   replay → Snapshot-1 (state at event 100)
+  Event 101-200: replay from Snapshot-1 → Snapshot-2
+  ...
+  Load: Snapshot-99 + events 9901-10000 → current state
+  → Replay 100 events thay vì 10,000
+```
+
+### ⚖️ Trade-offs — Khi nào Event Sourcing?
+
+| Dùng Event Sourcing | KHÔNG dùng |
 |---|---|
-| Cần audit trail (finance, legal) | CRUD đơn giản |
-| Cần temporal queries ("state tại thời điểm X") | Data không có lifecycle |
-| Domain naturally event-driven | Team chưa quen |
-| Cần nhiều projections từ cùng data | Ít read models |
+| Audit trail bắt buộc (finance, legal, compliance) | CRUD đơn giản, không cần lịch sử |
+| Temporal queries ("state tại thời điểm X") | Data không có lifecycle |
+| Domain naturally event-driven | Team chưa quen, complexity high |
+| Cần nhiều projections từ cùng data | 1-2 read models đủ |
+| **ITO:** Opportunity pipeline (audit), Resource history | **ITO:** Address management, system settings |
 
 ### Challenges
 
-```
-1. Event schema evolution: event v1 → v2 → cần migration?
-2. Performance: replay 1 triệu events mỗi lần load?
-   → Snapshot: lưu state mỗi N events
-3. Complexity: team cần hiểu cả Event Sourcing + CQRS
-4. Debugging: khó debug hơn state-based
-```
+| Challenge | Giải pháp |
+|---|---|
+| Event schema evolution (v1 → v2) | **Upcasting**: transform event cũ khi read |
+| Performance (replay 10K events) | **Snapshot**: cache state mỗi N events |
+| Debugging khó hơn state-based | **Event log viewer**: tool hiển thị timeline |
+| Team complexity | **Incremental adoption**: ES cho core domain only |
 
 ---
 
@@ -132,22 +196,19 @@ ShipmentCreated → PickedUp → InTransit → DeliveryAttempted
 
 ### Phần A: ITO — Resource Event Stream (15 phút)
 
-Liệt kê tất cả events trong lifecycle của Resource:
-
 ```
-1. ResourceOnboarded { ... }
-2. _______________   { ... }
-3. _______________   { ... }
-4. _______________   { ... }
-5. _______________   { ... }
-6. _______________   { ... }
+1. ResourceOnboarded    { name, email, initialSkills }
+2. _______________      { ... }
+3. _______________      { ... }
+4. _______________      { ... }
+5. _______________      { ... }
+6. _______________      { ... }
 ```
 
-Viết pseudo-code `rebuildResource(events)`:
-
+Viết `rebuildResource(events)`:
 ```typescript
-function rebuildResource(events: Event[]): Resource {
-  // viết logic replay...
+function rebuildResource(events: DomainEvent[]): Resource {
+  // replay logic...
 }
 ```
 
@@ -165,17 +226,19 @@ Từ Resource events, thiết kế 2 projections:
 
 ## 🪞 Reflect
 
-1. **Event Sourcing + CQRS là combo phổ biến — nhưng có PHẢI dùng chung không?** Gợi ý: Không! ES có thể dùng không CQRS (chỉ 1 model). CQRS có thể dùng không ES (state-based write + separate read).
+1. **ES + CQRS = combo phổ biến — nhưng có PHẢI dùng chung?** → **Không!** ES có thể dùng không CQRS (1 model, replay events). CQRS có thể dùng không ES (state-based write + separate read model). Combo = mạnh nhất nhưng complex nhất. **Start with CQRS, add ES when audit needed.**
 
-2. **Nếu event schema thay đổi (thêm field), events cũ xử lý thế nào?** Gợi ý: Upcasting — transform event v1 → v2 khi read.
+2. **Event schema thay đổi — events cũ xử lý thế nào?** → **Upcasting:** khi read event v1, transform → v2 format. Events trong store KHÔNG bao giờ sửa (immutable). Transformation xảy ra at read time. Giống DB migration nhưng cho events.
 
-3. **"Mọi domain đều nên Event Sourcing" — đúng hay sai? Tại sao?**
+3. **"Mọi domain đều nên Event Sourcing" — đúng hay sai?** → **Sai!** ES thêm significant complexity. Chỉ dùng cho Core Domain cần audit/temporal/multi-projection. Generic/Supporting subdomain dùng state-based đủ tốt. **Complexity budget có hạn — spend wisely.**
 
 ---
 
-## ✅ Hoàn thành lesson khi
-- [ ] Giải thích Event Sourcing bằng ví dụ
-- [ ] Thiết kế Event Stream cho Resource (≥5 events)
-- [ ] Viết pseudo-code rebuild state
-- [ ] Thiết kế ≥2 projections
-- [ ] Trả lời ≥2/3 câu hỏi reflection
+## ✅ Completion Checklist
+- [ ] **Recall:** Giải thích Event Sourcing + sự khác biệt với state-based + snapshot optimization
+- [ ] **Apply:** Thiết kế Event Stream cho Resource (≥5 events) + rebuild function
+- [ ] **Analyze:** Thiết kế ≥2 projections — giải thích tại sao cùng events tạo views khác nhau
+
+---
+
+> 🔗 **Tiếp theo:** Events cho 1 aggregate OK. Nhưng khi business process **vượt qua 1 aggregate** — "Opportunity Won → tạo Contract → staff Resources" — cần 3 aggregates, nhiều bước, có thể fail giữa chừng. **Saga & Process Manager** sẽ trả lời: cách orchestrate long-running business processes + compensation khi bước nào đó fail.

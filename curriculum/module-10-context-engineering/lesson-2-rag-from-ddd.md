@@ -5,48 +5,38 @@ lesson: 2
 title: "RAG from DDD Artifacts"
 duration: "40 phút"
 prerequisites: ["module-10/lesson-1"]
+narrative_phase: "context engineering"
+migration_phase: "Phase 5: Auto-retrieve DDD Knowledge Objects cho AI"
+business_invariant: "RAG = Retrieval-Augmented Generation — auto-find relevant Knowledge Objects; DDD-aware RAG > Naive RAG (follow cross-links, not just text match); OKF Atomic Granularity = 1 file = 1 chunk = perfect boundary; Metadata schema = wiring diagram cho Knowledge Graph"
 ---
 
-# Lesson 10.2: RAG from DDD Artifacts
+# Lesson 10.2: RAG from DDD Artifacts — "Cho AI tự tìm kiến thức phù hợp"
 
-## 🎓 Concept — "Cho AI tự tìm kiến thức phù hợp"
+## 📍 Context — Bạn đang ở đây
 
-### Vấn đề: Manual context selection không scale
+> Lesson 10.1 thiết kế Context Window 3 layers. Layer 1-2 = static, manual. Nhưng Layer 3 (task context) thay đổi mỗi request — developer phải tự chọn relevant files. Khi knowledge base lớn (>50 files) → không biết file nào liên quan → copy-paste sai hoặc thiếu. **RAG** tự động tìm đúng Knowledge Objects cho mỗi task.
 
-```
-Developer request: "Tạo API cho Opportunity Qualification"
+## 🔥 Tension — "Copy-paste context không scale"
 
-Manual approach:
-  1. Dev tự copy glossary/opportunity.md vào prompt
-  2. Dev tự copy event-storm/sales.md vào prompt
-  3. Dev tự copy adr-003.md vào prompt
-  → Mất 10 phút copy-paste
-  → Có thể quên file quan trọng
-  → Khi knowledge base lớn → không biết file nào liên quan
-```
+Sprint 16. ITO knowledge base đã lớn:
 
-### RAG = Retrieval-Augmented Generation
+> **Dev B:** *"Tôi cần tạo API cho Opportunity Qualification. Tôi biết cần copy context nhưng... glossary có 15 files, event-storm 5 files, ADR 8 files. File nào liên quan? Tôi copy glossary/opportunity.md, nhưng quên event-storms/sales.md và adr-003.md. AI thiếu context → output sai."*
 
-```
-User: "Tạo API cho Opportunity Qualification"
-     ↓
-Retriever: Tìm trong Knowledge Base
-     ↓
-Found relevant:
-  - glossary/opportunity.md (score: 0.95)
-  - glossary/lead.md (score: 0.82)
-  - event-storms/sales.md (score: 0.88)
-  - decisions/adr-003.md (score: 0.75)
-     ↓
-Augmented Prompt:
-  System: [Project Context]
-  Retrieved: [opportunity.md + lead.md + sales-events.md + adr-003.md]
-  User: "Tạo API cho Opportunity Qualification"
-     ↓
-AI: Generates API with correct business rules, terminology, events
-```
+> **Dev A:** *"Tôi mất 10 phút copy-paste mỗi lần. Lần trước quên ADR → AI generate Man-Day thay vì %. Phải sửa 2 lần."*
 
-### RAG Pipeline cho DDD
+**Tuấn:**
+> *"Manual context selection = O(n) effort, error-prone. RAG = auto-retrieve: developer hỏi 'Allocation API' → system tìm allocation.md, adr-001.md, event-storms/resource-mgmt.md tự động. Developer không cần biết file nào tồn tại — RAG tìm cho bạn."*
+
+> 💭 **Câu hỏi:** Knowledge base lớn = manual selection không scale. RAG giải quyết bằng cách tự tìm relevant files. Nhưng naive text search vs DDD-aware retrieval cho kết quả rất khác nhau. DDD structure (cross-links, aggregate relationships) = better retrieval.
+
+## 🎓 Explanation — RAG from DDD Artifacts
+
+### Từ Business đến Technical
+
+**Business Invariant cần bảo vệ:**
+> *"RAG = Retrieval-Augmented Generation (auto-find + inject relevant knowledge). DDD-aware RAG follows cross-links (Knowledge Graph, M9.2), not just text match. OKF Atomic Granularity (M6) = 1 file = 1 concept = 1 chunk = perfect boundary (no mid-concept splits). Metadata schema = wiring diagram giúp RAG traverse graph."*
+
+### RAG Pipeline
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -68,57 +58,59 @@ AI: Generates API with correct business rules, terminology, events
                                           └──────────────┘
 ```
 
-### DDD-aware Retrieval — Không chỉ text search
-
-Naive RAG tìm theo text similarity. DDD-aware RAG tìm theo **domain structure:**
+### Naive RAG vs DDD-aware RAG
 
 ```
 Query: "Allocation API"
 
-Naive RAG:
+Naive RAG (text similarity only):
   → glossary/allocation.md (text match: "allocation")
-  → Done.
+  → Done. 1 file.
+  → AI thiếu: business rules, events, ADR → output generic
 
-DDD-aware RAG:
-  → glossary/allocation.md (direct match)
-  → glossary/resource.md (allocation BELONGS TO resource aggregate)
+DDD-aware RAG (follow cross-links):
+  → glossary/allocation.md      (direct text match)
+  → glossary/resource.md        (allocation BELONGS TO Resource aggregate)
   → event-storms/resource-mgmt.md (has ResourceAllocated event)
-  → decisions/adr-001.md (allocation uses %)
-  → context-map.md (Resource Management context)
-  
-  → HOW? Follow cross-links (Knowledge Graph from Module 9)
+  → decisions/adr-001.md        (allocation uses %, not Man-Day)
+  → context-map.md              (Resource Context integration)
+
+  HOW? Follow `## Related` cross-links (Knowledge Graph from M9.2)
+  → AI nhận 5 relevant KOs → generate chính xác
+
+→ DDD-aware RAG = 5x better context than naive RAG
 ```
 
-### Chunking Strategy cho DDD
+### Chunking Strategy — OKF = Perfect Chunks
 
 ```
 ❌ Naive chunking (split by 500 tokens):
-  glossary/resource.md bị cắt giữa chừng
-  → AI nhận nửa business rule → hiểu sai
+  glossary/resource.md bị cắt giữa → AI nhận nửa business rule → hiểu sai
+  event-storms/sales.md bị split → mất event sequence continuity
 
-✅ DDD-aware chunking (split by Knowledge Object):
-  Chunk 1: glossary/resource.md (toàn bộ file = 1 chunk)
-  Chunk 2: glossary/allocation.md (toàn bộ file = 1 chunk)
-  Chunk 3: event-storms/resource-mgmt.md (toàn bộ file = 1 chunk)
-  
-  → Atomic granularity (OKF) = perfect chunking strategy!
-  → Đây là lý do Module 6 dạy "1 file = 1 concept"
+✅ DDD-aware chunking (1 Knowledge Object = 1 chunk):
+  Chunk 1: glossary/resource.md    (toàn bộ file = 1 chunk)
+  Chunk 2: glossary/allocation.md  (toàn bộ file = 1 chunk)
+  Chunk 3: event-storms/resource-mgmt.md (toàn bộ = 1 chunk)
+  Chunk 4: decisions/adr-001.md    (toàn bộ = 1 chunk)
+
+  → OKF Atomic Granularity (M6: 1 file = 1 concept) = perfect chunk boundary
+  → Đây là LÝ DO Module 6 dạy atomic files!
+  → No need for complex splitting logic
 ```
 
-### Knowledge Object Metadata Schema — RAG-ready
-
-Module 6 đã giới thiệu concept "mọi artifact = Knowledge Object". Bây giờ chúng ta cần **metadata schema** để RAG retriever tìm đúng và đủ:
+### Metadata Schema — RAG-ready YAML
 
 ```yaml
-# glossary/resource.md
+# glossary/resource.md — YAML frontmatter
 ---
 id: KO-GLOSSARY-001
-type: glossary                        # glossary | event-storm | adr | context-map
+type: glossary                        # glossary | event-storm | adr | policy
 owner: Resource Management            # Bounded Context sở hữu
 domain: resource-management           # Subdomain
 tags: [core-domain, high-conflict]    # Searchable tags
 
-# Relationships — AI dùng để follow cross-links
+# Relationships — RAG follows these to expand retrieval
 related_events: [ResourceAllocated, ResourceBenched, ResourceFreed]
 related_contexts: [resource-management, delivery-management]
 related_adrs: [adr-001-use-percentage]
@@ -127,66 +119,69 @@ related_tests: [test_allocation_validation, test_bench_detection]
 ---
 ```
 
-**Tại sao cần metadata?**
-
+**Why metadata?**
 ```
-Không có metadata:
+Không metadata:
   Query: "allocation rules"
-  → Chỉ tìm glossary/allocation.md (text match)
+  → glossary/allocation.md (text match only)
   → Thiếu: adr-001, ResourceAllocated event, validation tests
 
 Có metadata:
   Query: "allocation rules"
-  → glossary/allocation.md (text match)
-  → Follow related_adrs → decisions/adr-001.md
-  → Follow related_events → event-storms/resource-mgmt.md
-  → Follow related_tests → test files
-  → AI nhận ĐỦ context → generate chính xác hơn
+  → glossary/allocation.md         (text match)
+  → Follow related_adrs →          decisions/adr-001.md
+  → Follow related_events →        event-storms/resource-mgmt.md
+  → Follow related_tests →         test files
+  → AI nhận ĐỦ context → output chính xác
 ```
 
-**Metadata = "wiring diagram" cho Knowledge Graph.** Nó biến collection of files thành navigable graph.
-
-> 💡 **Bạn không cần metadata cho mọi file ngày đầu.** Bắt đầu với Core Domain glossary terms → mở rộng dần. ROI cao nhất là metadata cho high-conflict terms (Module 2).
-
-### Ví dụ — ITO CRM RAG
+### ITO CRM — RAG Example
 
 ```
-Knowledge Base (indexed):
-  glossary/*.md          → 8 chunks (8 terms)
-  event-storms/*.md      → 3 chunks (3 domain flows)
-  decisions/*.md         → 3 chunks (3 ADRs)
+Knowledge Base indexed:
+  glossary/*.md          → 15 chunks (15 terms)
+  event-storms/*.md      → 5 chunks (5 domain flows)
+  decisions/*.md         → 8 chunks (8 ADRs)
   context-map.md         → 1 chunk
   domain-map.md          → 1 chunk
-  policies/*.md          → 2 chunks
+  policies/*.md          → 3 chunks
 
 Query: "Implement bench detection logic"
-Retrieved:
-  1. glossary/bench.md (direct match)
-  2. glossary/allocation.md (bench DEPENDS ON allocation)
-  3. glossary/utilization.md (bench = 0% utilization)
-  4. event-storms/resource-mgmt.md (ResourceBenched event)
-  
-→ AI receives 4 relevant Knowledge Objects → generates accurate code
+Retrieved (via DDD-aware RAG):
+  1. glossary/bench.md           (direct match, score: 0.95)
+  2. glossary/allocation.md      (bench DEPENDS ON allocation, score: 0.87)
+  3. glossary/utilization.md     (bench = 0% utilization, score: 0.82)
+  4. event-storms/resource-mgmt.md (ResourceBenched event, score: 0.78)
+
+→ AI receives 4 relevant KOs → generates accurate bench detection code
 ```
 
-### Ví dụ — Logistics RAG
+### Logistics — RAG Example
 
 ```
 Query: "Optimize delivery route for Hanoi district"
 Retrieved:
-  1. glossary/route.md
-  2. glossary/time-window.md (delivery time constraints)
-  3. decisions/adr-002.md (Route Optimization uses Hybrid approach)
-  4. event-storms/transportation.md (RoutePlanned event)
+  1. glossary/route.md               (direct match)
+  2. glossary/time-window.md         (delivery time constraints)
+  3. decisions/adr-l02-route-algo.md (Route uses Hybrid approach)
+  4. event-storms/transportation.md  (RoutePlanned, RouteOptimized events)
 ```
+
+### ⚖️ Trade-offs — Manual vs RAG
+
+| | Manual Context (M10.1) | RAG (M10.2) |
+|---|---|---|
+| **KB size** | < 30 files | > 30 files |
+| **Team** | 2-3 devs (know all files) | > 10 devs |
+| **Effort** | 5-10 min copy-paste | Automated |
+| **Accuracy** | High (if dev knows KB) | High (if metadata + cross-links good) |
+| **Risk** | Forget critical files | Retrieve irrelevant files (noise) |
 
 ---
 
 ## 🏋️ Exercise — Thiết kế RAG Pipeline
 
 ### Phần A: Chunking Design (10 phút)
-
-Liệt kê tất cả Knowledge Objects trong ITO repo và thiết kế chunks:
 
 | File | Chunk size | Metadata tags |
 |---|---|---|
@@ -196,8 +191,6 @@ Liệt kê tất cả Knowledge Objects trong ITO repo và thiết kế chunks:
 | | | |
 
 ### Phần B: Retrieval Simulation (15 phút)
-
-Cho 3 developer queries, dự đoán top-3 retrieved chunks:
 
 **Query 1:** "Create unit test for allocation validation"
 - Chunk 1: _______________
@@ -225,16 +218,19 @@ Query: "Implement ResourceBenched event handler"
 
 ## 🪞 Reflect
 
-1. **OKF Atomic Granularity (1 file = 1 concept) giúp RAG thế nào?** Gợi ý: perfect chunk boundaries — không cần split hay merge.
+1. **OKF Atomic Granularity (M6) giúp RAG thế nào?** → 1 file = 1 concept = **perfect chunk boundary**. Không cần split (mất context) hay merge (mixed concepts). M6 design decision pays off in M10 AI consumption.
 
-2. **RAG có thể sai không? Khi nào retrieved context misleading?** Gợi ý: outdated docs, ambiguous terms → RAG trả về file sai.
+2. **RAG sai khi nào?** → **Outdated docs** (glossary chưa update → AI dùng old rules), **ambiguous terms** (cùng tên khác nghĩa → retrieve sai file), **missing metadata** (no cross-links → miss related KOs). **Fix:** keep docs current + comprehensive metadata.
 
-3. **Small team (2-3 devs) có cần RAG pipeline không?** Gợi ý: chưa — manual context selection đủ. RAG cho team > 10 hoặc knowledge base > 100 files.
+3. **Small team cần RAG?** → Team 2-3 devs, KB < 30 files → manual đủ. Team > 10, KB > 50 files → RAG justifiable. **Start simple, add RAG when manual becomes bottleneck.**
 
 ---
 
-## ✅ Hoàn thành lesson khi
-- [ ] Giải thích RAG pipeline bằng diagram
-- [ ] Thiết kế chunking strategy cho ITO
-- [ ] Simulate retrieval cho 3 queries
-- [ ] Hiểu tại sao Atomic Granularity = good chunking
+## ✅ Completion Checklist
+- [ ] **Recall:** Giải thích RAG pipeline + DDD-aware vs Naive RAG
+- [ ] **Apply:** Thiết kế chunking strategy + simulate retrieval cho 3 queries
+- [ ] **Analyze:** Giải thích tại sao OKF Atomic Granularity = good chunking boundary
+
+---
+
+> 🔗 **Tiếp theo:** Context Window (M10.1) + RAG (M10.2) = AI có đúng knowledge. Nhưng developer vẫn phải viết prompt mỗi lần — ad-hoc, inconsistent. **Structured Prompts** sẽ trả lời: làm sao tạo reusable prompt templates kết hợp DDD context, để mọi task type đều có consistent, high-quality AI output?

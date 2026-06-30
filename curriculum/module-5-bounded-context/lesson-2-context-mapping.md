@@ -5,19 +5,40 @@ lesson: 2
 title: "Context Mapping"
 duration: "35 phút"
 prerequisites: ["module-5/lesson-1"]
+narrative_phase: "kiến trúc"
+migration_phase: "Phase 1: Vẽ bản đồ quan hệ giữa contexts"
+business_invariant: "Mỗi cặp context PHẢI có integration pattern rõ ràng; ACL bắt buộc cho external systems; Partnership chỉ giữa 2 Core contexts cùng priority"
 ---
 
-# Lesson 5.2: Context Mapping
+# Lesson 5.2: Context Mapping — "Bản đồ quan hệ giữa các Context"
 
-## 🎓 Concept — "Bản đồ quan hệ giữa các Context"
+## 📍 Context — Bạn đang ở đây
 
-### Tại sao cần Context Map?
+> Lesson 5.1 giúp bạn tách 8 ITO subdomains → 6 Bounded Contexts. Resource Management tách thành Skill Inventory Context + Allocation Context để giải quyết merge conflict. Nhưng bây giờ: **các contexts cần nói chuyện với nhau.** Khi Hà thắng deal (Sales Context) → Tuấn cần biết để tìm resource (Resource Context) → PM cần biết resource nào assigned (Delivery Context).
+>
+> Câu hỏi: contexts giao tiếp thế nào? Ai phụ thuộc ai? Ai control data format?
 
-Bounded Contexts không sống cô lập. Chúng **giao tiếp** với nhau:
-- Resource Context cần biết Project nào cần resource (từ Sales Context)
-- Sales Context cần biết resource nào available (từ Resource Context)
+## 🔥 Tension — "API thay đổi, tôi không biết"
 
-Context Map = **bản đồ mô tả ai nói chuyện với ai, và theo quy tắc nào**.
+Phase 1 launch. Sales Context và Resource Context đang chạy. Tuần đầu OK. Tuần 2:
+
+> **Dev C (team Resource):** *"Tôi đổi response format của endpoint `/available-resources`. Thêm field `aiMatchScore` vì AI matching cần."*
+>
+> **Dev D (team Sales):** *"Hệ thống Sales bị crash! Tôi parse response theo format cũ — không có field `aiMatchScore`. Tại sao không ai báo tôi?"*
+
+**Minh:**
+> *"Chúng ta đã tách contexts rồi. Tại sao thay đổi 1 context → break context khác? Quy tắc giao tiếp giữa contexts là gì?"*
+
+Bạn kiểm tra: **không có quy tắc.** 2 teams gọi API trực tiếp, không có contract, không có version, không có notification khi thay đổi. Tách context mà không define relationship = **tệ hơn monolith** (ít nhất monolith compile fail khi sai).
+
+> 💭 **Câu hỏi:** Tách Bounded Context = bước 1. Bước 2 = define relationships giữa contexts. Ai upstream? Ai downstream? Ai control format? Ai phải adapt?
+
+## 🎓 Explanation — Context Map
+
+### Từ Business đến Technical
+
+**Business Invariant cần bảo vệ:**
+> *"Mỗi cặp Bounded Context PHẢI có integration pattern rõ ràng. ACL bắt buộc khi tích hợp external system (SAP, Google Maps). Partnership chỉ giữa 2 Core contexts cùng priority — vì cost sync cao."*
 
 ### Upstream và Downstream
 
@@ -27,101 +48,112 @@ Upstream (U) ──────→ Downstream (D)
  "Có power"            "Phải thích nghi"
 ```
 
-| Vai trò | Nghĩa | Ví dụ |
+| Vai trò | Nghĩa | ITO Ví dụ |
 |---|---|---|
-| **Upstream** | Cung cấp data/service, quyết định format | Resource Context cung cấp "available resources" |
-| **Downstream** | Tiêu thụ data, phải adapt theo format upstream | Sales Context consume "available resources" để match |
+| **Upstream** | Cung cấp data/service, quyết định format | Resource Context: cung cấp "available resources" |
+| **Downstream** | Tiêu thụ data, phải adapt theo upstream | Sales Context: consume "available resources" để suggest cho Hà |
 
 ### 7 Integration Patterns
 
-| # | Pattern | Quan hệ | Khi nào dùng |
-|:---:|---|---|---|
-| 1 | **Partnership** | U ↔ D (ngang hàng) | 2 teams cùng priority, phối hợp chặt |
-| 2 | **Shared Kernel** | U ↔ D (chia sẻ code) | 2 contexts share 1 phần model chung |
-| 3 | **Customer-Supplier** | U → D (có commitment) | Upstream cam kết phục vụ downstream |
-| 4 | **Conformist** | U → D (downstream phải theo) | Downstream chấp nhận model của upstream |
-| 5 | **Anti-Corruption Layer (ACL)** | U → [ACL] → D | Downstream tự bảo vệ, translate model |
-| 6 | **Open Host Service (OHS)** | U → D (API public) | Upstream expose public API cho mọi consumer |
-| 7 | **Published Language** | (Shared format) | JSON Schema, Protobuf — format chuẩn |
+| # | Pattern | Quan hệ | Khi nào dùng | ITO Ví dụ |
+|:---:|---|---|---|---|
+| 1 | **Partnership** | U ↔ D (ngang hàng) | 2 teams cùng priority, sync chặt | Sales ↔ Resource |
+| 2 | **Shared Kernel** | Chia sẻ code/model | 2 contexts share 1 phần nhỏ model | ⚠️ Anti-pattern nếu lạm dụng |
+| 3 | **Customer-Supplier** | U → D (có SLA) | Upstream cam kết phục vụ downstream | Resource → Delivery |
+| 4 | **Conformist** | U → D (downstream theo) | Downstream chấp nhận model upstream, không fight | Dùng Google Calendar API as-is |
+| 5 | **ACL** | U → [ACL] → D | Downstream tự bảo vệ, translate model | SAP ↔ Finance Context |
+| 6 | **OHS** | U → D (API public) | Upstream expose public API cho N consumers | Resource Context → AI Agent |
+| 7 | **Published Language** | Shared format | Format chuẩn mọi người dùng | JSON Schema, Protobuf |
 
-### Chọn pattern nào? — Decision Guide
+### Decision Guide — Chọn pattern nào?
 
 ```
-Bạn control upstream?
-├── Có → Team bạn own cả 2? 
-│        ├── Có → Partnership hoặc Shared Kernel
-│        └── Không → Customer-Supplier (cam kết SLA)
+Q1: Bạn control upstream?
+├── Có → Q2: Team bạn own cả 2 contexts?
+│        ├── Có → Partnership (nếu cùng priority)
+│        │        hoặc Customer-Supplier (nếu khác priority)
+│        └── Không → Customer-Supplier (cam kết SLA, versioning)
 │
-└── Không → Upstream thay đổi thường xuyên?
-             ├── Có → ACL (bảo vệ domain bạn)
-             └── Không → Conformist (chấp nhận, không fight)
+└── Không (external system) →
+     Q3: Upstream thay đổi thường xuyên?
+     ├── Có → ACL (BẮT BUỘC — bảo vệ domain bạn)
+     └── Không → Conformist (chấp nhận model, không fight)
 
-Upstream phục vụ nhiều consumers?
+Q4: Upstream phục vụ nhiều consumers?
 ├── Có → Open Host Service + Published Language
 └── Không → Customer-Supplier hoặc Partnership
 ```
 
-### Ví dụ — ITO Context Map
+### Apply cho ITO — Context Map
 
 ```
-┌─────────────────────────────────────────────────┐
-│                ITO CRM System                    │
-│                                                  │
-│  ┌──────────────┐    Partnership    ┌──────────┐│
-│  │  Sales       │◄════════════════►│ Resource  ││
-│  │  Context     │                   │ Context   ││
-│  └──────┬───────┘                   └────┬─────┘│
-│         │                                │       │
-│    Customer-                        Customer-    │
-│    Supplier                         Supplier     │
-│         │                                │       │
-│  ┌──────▼───────┐                   ┌────▼─────┐│
-│  │  Finance     │                   │ Delivery  ││
-│  │  Context     │                   │ Context   ││
-│  └──────────────┘                   └──────────┘│
-│                                                  │
-│        ┌──────────┐    ACL    ┌──────────────┐  │
-│        │ SAP ERP  │◄════════►│ Finance Ctx   │  │
-│        │(External)│           │               │  │
-│        └──────────┘           └──────────────┘  │
-│                                                  │
-│        ┌──────────┐    OHS    ┌──────────────┐  │
-│        │ Resource │═══════════►│ AI Agent     │  │
-│        │ Context  │  (API)    │ (Future)      │  │
-│        └──────────┘           └──────────────┘  │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                   ITO CRM System                      │
+│                                                       │
+│  ┌──────────────┐   Partnership    ┌───────────────┐ │
+│  │  Sales       │◄═══════════════►│  Resource      │ │
+│  │  Context     │  (2 Core, cùng  │  Context       │ │
+│  │  (Hà)       │   priority)     │  (Tuấn)       │ │
+│  └──────┬───────┘                 └───┬────┬──────┘ │
+│         │                             │    │         │
+│    Customer-                    Customer-  OHS       │
+│    Supplier                     Supplier   (API)     │
+│    (Sales provide               (Resource  │         │
+│     deal data)                   provide   │         │
+│         │                        allocation)│        │
+│  ┌──────▼───────┐          ┌─────▼────┐ ┌──▼──────┐ │
+│  │  Finance     │          │ Delivery  │ │AI Agent │ │
+│  │  Context     │          │ Context   │ │(Future) │ │
+│  └──────┬───────┘          └──────────┘ └─────────┘ │
+│         │                                            │
+│    ACL (translate                                    │
+│     SAP model)                                       │
+│         │                                            │
+│  ┌──────▼───────┐                                    │
+│  │  SAP ERP     │ (External System)                  │
+│  └──────────────┘                                    │
+└──────────────────────────────────────────────────────┘
 ```
 
 **Đọc bản đồ:**
-- Sales ↔ Resource: **Partnership** — 2 Core, cùng priority, cần sync chặt
-- Sales → Finance: **Customer-Supplier** — Sales provide deal data, Finance consume
-- SAP ↔ Finance: **ACL** — SAP là external, Finance tự bảo vệ bằng translation layer
-- Resource → AI Agent: **OHS** — Resource expose API cho future AI consumers
+- **Sales ↔ Resource: Partnership** — 2 Core domains, cùng priority, cần sync chặt (khi deal won → resource request). Cost: 2 teams sync weekly.
+- **Sales → Finance: Customer-Supplier** — Sales provide deal data, Finance consume để tạo invoice. Sales cam kết không break format.
+- **Resource → Delivery: Customer-Supplier** — Resource provide allocation data, Delivery consume để plan sprints.
+- **Finance ↔ SAP: ACL** — SAP là external, Finance tự bảo vệ bằng translation layer. Nếu SAP đổi API → chỉ sửa ACL, không sửa Finance logic.
+- **Resource → AI Agent: OHS** — Resource expose public API cho future AI consumers. Published Language = JSON Schema.
 
-### Ví dụ — Logistics Context Map
+### Logistics Context Map
 
 ```
-┌──────────────────────────────────────────────────┐
-│              Logistics System                     │
-│                                                   │
-│  ┌──────────┐  Partnership  ┌──────────────────┐ │
-│  │  Order   │◄═════════════►│  Route           │ │
-│  │  Context │               │  Context (Core)  │ │
-│  └────┬─────┘               └────────┬─────────┘ │
-│       │                              │            │
-│  Customer-Supplier              Partnership       │
-│       │                              │            │
-│  ┌────▼─────┐               ┌────────▼─────────┐ │
-│  │Warehouse │               │  Fleet Context    │ │
-│  │ Context  │               │                   │ │
-│  └──────────┘               └──────────────────┘ │
-│                                                   │
-│  ┌──────────┐    ACL    ┌──────────────────────┐ │
-│  │Google    │◄═════════►│  Tracking Context    │ │
-│  │Maps API  │           │                      │ │
-│  └──────────┘           └──────────────────────┘ │
-└──────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────┐
+│              Logistics System                      │
+│                                                    │
+│  ┌──────────┐  Partnership  ┌───────────────────┐ │
+│  │  Order   │◄════════════►│  Route Context     │ │
+│  │  Context │              │  (Core, AI)        │ │
+│  └────┬─────┘              └────────┬───────────┘ │
+│       │                             │              │
+│  Customer-Supplier           Partnership           │
+│       │                             │              │
+│  ┌────▼─────┐              ┌────────▼───────────┐ │
+│  │Warehouse │              │  Fleet Context      │ │
+│  │ Context  │              │                     │ │
+│  └──────────┘              └────────────────────┘ │
+│                                                    │
+│  ┌──────────┐    ACL    ┌───────────────────────┐ │
+│  │Google    │◄═════════►│  Tracking Context     │ │
+│  │Maps API  │           │                       │ │
+│  └──────────┘           └───────────────────────┘ │
+└───────────────────────────────────────────────────┘
 ```
+
+### ⚖️ Trade-offs — Partnership vs Customer-Supplier
+
+| | Partnership | Customer-Supplier |
+|---|---|---|
+| **Được** | Cả 2 teams có tiếng nói, model evolve cùng nhau | Rõ ràng ai control, downstream có SLA |
+| **Mất** | Sync cost cao (weekly meetings, joint planning) | Downstream phụ thuộc, ít influence lên format |
+| **Khi nào** | 2 Core contexts, cùng priority, cùng release cycle | Khác priority, khác team size, upstream ổn định |
 
 ---
 
@@ -129,49 +161,50 @@ Upstream phục vụ nhiều consumers?
 
 ### Phần A: ITO — Xác định Integration Patterns (15 phút)
 
-Điền pattern cho mỗi cặp context:
-
 | Context A | ↔ | Context B | Pattern | Lý do |
 |---|:---:|---|---|---|
-| Sales | ↔ | Resource | | |
-| Sales | → | Finance | | |
-| Resource | → | Delivery | | |
-| Finance | ↔ | SAP (external) | | |
-| Resource | → | AI Agent | | |
+| Sales | ↔ | Resource | ? | ? |
+| Sales | → | Finance | ? | ? |
+| Resource | → | Delivery | ? | ? |
+| Finance | ↔ | SAP (external) | ? | ? |
+| Resource | → | AI Agent | ? | ? |
+| Customer Success | → | Sales | ? | ? |
 
 ### Phần B: Logistics (10 phút)
 
 | Context A | ↔ | Context B | Pattern | Lý do |
 |---|:---:|---|---|---|
-| Order | ↔ | Route | | |
-| Route | ↔ | Fleet | | |
-| Tracking | ↔ | Google Maps | | |
-| Order | → | Warehouse | | |
-| Order | → | Billing | | |
+| Order | ↔ | Route | ? | ? |
+| Route | ↔ | Fleet | ? | ? |
+| Tracking | ↔ | Google Maps | ? | ? |
+| Order | → | Warehouse | ? | ? |
+| Order | → | Billing | ? | ? |
 
 ### Phần C: Vẽ Context Map diagram (10 phút)
 
-Vẽ Context Map bằng ASCII hoặc text cho ITO (giống ví dụ ở trên):
+Vẽ Context Map bằng ASCII cho ITO (tham khảo ví dụ trên):
 
 ```
-(vẽ ở đây)
+(vẽ ở đây — bao gồm contexts, arrows, pattern labels)
 ```
 
 ---
 
 ## 🪞 Reflect
 
-1. **ACL là pattern phổ biến nhất khi tích hợp external system. Tại sao?** Gợi ý: bạn không control external system, model của họ có thể thay đổi bất cứ lúc nào.
+1. **ACL là pattern phổ biến nhất khi tích hợp external system — tại sao?** → Vì bạn KHÔNG control external system. SAP, Google Maps, Salesforce có thể đổi API bất cứ lúc nào. ACL = translation layer — **khi external đổi, chỉ sửa ACL, không sửa domain logic.** Không có ACL = SAP thay đổi 1 field → toàn bộ Finance Context phải refactor.
 
-2. **Partnership nghe hay nhưng có cost gì?** Gợi ý: 2 teams phải sync liên tục — meeting, contract changes, deployment coordination.
+2. **Partnership nghe hay nhưng cost gì?** → 2 teams phải sync liên tục: weekly planning, shared API contracts, coordinated deployments. Nếu 1 team chậm → team kia bị block. **Partnership chỉ đáng khi CẢ HAI đều Core, cùng priority.** Nếu 1 bên Supporting → dùng Customer-Supplier rẻ hơn.
 
-3. **Nếu 1 context là upstream của 5 downstream contexts — pattern nào phù hợp nhất?** Tại sao?
+3. **1 context upstream của 5 downstream → pattern nào?** → **Open Host Service + Published Language.** Vì: 5 consumers = 5 contracts riêng → quá nặng. OHS = 1 API public, versioned, ai cần thì consume. Published Language = JSON Schema/Protobuf → format chuẩn, backwards compatible.
 
 ---
 
-## ✅ Hoàn thành lesson khi
-- [ ] Giải thích Upstream vs Downstream
-- [ ] Liệt kê ≥5 integration patterns
-- [ ] Xác định pattern cho ≥4 cặp contexts (ITO)
-- [ ] Xác định pattern cho ≥4 cặp contexts (Logistics)
-- [ ] Vẽ Context Map diagram
+## ✅ Completion Checklist
+- [ ] **Recall:** Giải thích Upstream/Downstream + ≥5 integration patterns
+- [ ] **Apply:** Xác định pattern cho ≥5 cặp ITO contexts + ≥4 cặp Logistics contexts + vẽ diagram
+- [ ] **Analyze:** Giải thích tại sao API crash Dev D xảy ra — thiếu gì? Liên hệ với ACL và Customer-Supplier patterns
+
+---
+
+> 🔗 **Tiếp theo:** Bạn đã biết CÁC pattern. Bài tiếp — *Integration Patterns (Deep Dive)* — sẽ đi sâu vào **cách implement** 3 patterns quan trọng nhất: ACL (cho SAP), Partnership Events (cho Sales ↔ Resource), và OHS (cho AI Agent future-proofing).

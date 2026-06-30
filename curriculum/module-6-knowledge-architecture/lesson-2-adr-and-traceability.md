@@ -5,65 +5,97 @@ lesson: 2
 title: "ADR và Traceability"
 duration: "30 phút"
 prerequisites: ["module-6/lesson-1"]
+narrative_phase: "kiến trúc tri thức"
+migration_phase: "Phase 1: Ghi lại quyết định kiến trúc"
+business_invariant: "Mỗi quyết định kiến trúc PHẢI có ADR; ADR liên kết ngược tới Glossary/Event Storm/Context Map; Traceability Chain = audit trail"
 ---
 
-# Lesson 6.2: ADR và Traceability
+# Lesson 6.2: ADR và Traceability — "Ghi nhớ TẠI SAO, không chỉ CÁI GÌ"
 
-## 🎓 Concept — "Ghi nhớ TẠI SAO, không chỉ CÁI GÌ"
+## 📍 Context — Bạn đang ở đây
 
-### Vấn đề: "Tại sao code viết thế này?"
+> Lesson 6.1 cho bạn Repository Structure: `docs/` sống cùng `src/`, mỗi file = 1 concept, cross-linked thành Knowledge Graph. Nhưng structure chỉ trả lời "CÁI GÌ nằm ở đâu" — không trả lời "TẠI SAO chọn giải pháp này". Khi dev mới hỏi "Tại sao allocation dùng % thay vì Man-Day?" — không ai trả lời được nếu không ghi lại quyết định.
+
+## 🔥 Tension — "Người quyết định đã nghỉ"
+
+Sprint 8. 3 tháng sau khi ITO migration bắt đầu. Dev G đang fix bug allocation:
+
+> **Dev G:** *"Allocation dùng % — tổng ≤ 100%. Nhưng PM nói họ cần phân bổ theo Man-Day vì client billing dùng Man-Day. Tại sao team chọn %? Có lý do gì không?"*
+>
+> **Tuấn:** *"Hmm... Minh quyết định. Nhưng Minh vừa chuyển team khác tuần trước."*
+>
+> **Dev G:** *"Không có tài liệu nào giải thích tại sao. Tôi không biết nếu đổi sang Man-Day thì break cái gì."*
+
+Dev G mất 3 ngày:
+- 1 ngày đọc code tìm "context" xung quanh allocation
+- 1 ngày hỏi team nhưng ai nhớ ai quên
+- 1 ngày refactor → phát hiện Finance Context phụ thuộc vào % → **rollback**
+
+> **Minh (remote):** *"Tôi chọn % vì 3 lý do: (1) cross-context dễ dùng, (2) validation đơn giản sum ≤ 100%, (3) convert sang hours khi cần. Đáng lẽ phải viết ADR. Sorry."*
+
+> 💭 **Câu hỏi:** Code nói "CÁI GÌ" — `allocation <= 100%`. Nhưng code KHÔNG nói "TẠI SAO". Và khi người quyết định rời team → knowledge bị mất. Làm sao ghi lại quyết định để **bất kỳ ai, bất kỳ lúc nào** đều hiểu lý do?
+
+## 🎓 Explanation — Architecture Decision Record (ADR)
+
+### Từ Business đến Technical
+
+**Business Invariant cần bảo vệ:**
+> *"Mỗi quyết định kiến trúc PHẢI có ADR trong `docs/decisions/`. ADR phải liên kết ngược tới Glossary entry, Event Storm output, và Context Map. Traceability Chain = audit trail từ business need → technical decision → code implementation."*
+
+### ADR là gì?
+
+ADR = tài liệu **ngắn gọn** (đọc xong trong 5 phút) ghi lại 1 quyết định kiến trúc:
 
 ```
-6 tháng sau, dev mới vào hỏi:
-"Tại sao Allocation dùng % thay vì Man-Day?"
-"Tại sao Resource Matching dùng AI thay vì rule-based?"
-"Tại sao Customer Success là Core chứ không phải Supporting?"
-
-Không ai nhớ. Người quyết định đã nghỉ.
-→ Dev mới đoán → đoán sai → refactor sai → bug
+ADR = Context (tại sao cần quyết định)
+    + Options (các lựa chọn + trade-offs)
+    + Decision (chọn gì + lý do)
+    + Consequences (hệ quả tốt/xấu)
 ```
-
-### Architecture Decision Record (ADR)
-
-ADR = tài liệu **ngắn gọn** ghi lại 1 quyết định kiến trúc: **bối cảnh, lựa chọn, quyết định, hệ quả.**
 
 ### Template ADR
 
 ```markdown
-# ADR-001: [Tên quyết định]
+# ADR-001: [Tên quyết định — ngắn gọn, hành động]
 
 ## Status
-Accepted / Proposed / Deprecated / Superseded by ADR-XXX
+Accepted | Proposed | Deprecated | Superseded by ADR-XXX
 
 ## Date
 YYYY-MM-DD
 
 ## Context
-[Tình huống gì dẫn đến quyết định này?]
+[Tình huống business gì dẫn đến quyết định này?
+Liên kết với Glossary, Event Storm, hoặc business constraint cụ thể.]
 
 ## Decision Drivers
-- [Yếu tố 1]
-- [Yếu tố 2]
+- [Yếu tố 1 — từ business constraint]
+- [Yếu tố 2 — từ technical constraint]
+- [Yếu tố 3 — từ team constraint]
 
 ## Options Considered
-1. [Lựa chọn A] — ưu/nhược
-2. [Lựa chọn B] — ưu/nhược
-3. [Lựa chọn C] — ưu/nhược
+1. **[Option A]** — ưu/nhược
+2. **[Option B]** — ưu/nhược
+3. **[Option C]** — ưu/nhược
 
 ## Decision
-Chọn [Option X] vì [lý do].
+Chọn **[Option X]** vì [lý do kết nối với Decision Drivers].
 
 ## Consequences
 ### Positive
-- [Hệ quả tốt]
+- [Hệ quả tốt — mapped to business value]
 ### Negative
-- [Hệ quả xấu / tradeoff chấp nhận]
+- [Trade-off chấp nhận — what you give up]
+### Risks
+- [Rủi ro cần monitor — trigger để revisit ADR]
 
 ## References
-- [Link đến glossary, event storm, meeting notes]
+- [Link Glossary entry](../domain/glossary/xxx.md)
+- [Link Event Storm](../event-storms/xxx.md)
+- [Link Context Map](../domain/context-map.md)
 ```
 
-### Ví dụ ADR — ITO
+### ITO ADR — Ví dụ đầy đủ
 
 ```markdown
 # ADR-001: Allocation sử dụng % thay vì Man-Day
@@ -75,95 +107,133 @@ Accepted
 2026-06-25
 
 ## Context
-Allocation là concept dùng xuyên suốt nhiều Bounded Contexts 
-(Resource, Delivery, Finance). Cần chọn đơn vị đo thống nhất.
+Allocation là concept xuyên suốt 3 Bounded Contexts (Resource, Delivery,
+Finance). Resource Context dùng để track "resource bận bao nhiêu",
+Finance dùng để tính billing, Delivery dùng để plan sprint capacity.
+Cần chọn đơn vị đo thống nhất. Dev G đã thử đổi sang Man-Day →
+break Finance Context (dependency on %) → rollback.
+
+Ref: [Glossary: Allocation](../domain/glossary/allocation.md)
 
 ## Decision Drivers
-- Resource có thể allocate cho nhiều project cùng lúc (partial)
-- Finance cần convert ra tiền (billing)
-- PM cần biết "resource này bận bao nhiêu"
+- Resource có thể allocate cho nhiều project cùng lúc (partial allocation)
+- Finance cần convert ra tiền (billing = % × available_hours × rate)
+- PM cần dashboard "resource bận bao nhiêu" → trực quan
+- 5-dev team → đơn giản hơn = maintain dễ hơn
 
 ## Options Considered
-1. **% Time** — "Resource A: 60% cho Project X, 40% cho Project Y"
-   - ✅ Trực quan, dễ validate (tổng ≤ 100%)
-   - ✅ Cross-context dễ dùng
+1. **% Time** — "Resource A: 60% Project X, 40% Project Y"
+   - ✅ Trực quan, validate đơn giản (sum ≤ 100%)
+   - ✅ Cross-context communication dễ
    - ❌ Không chính xác giờ (60% ≈ bao nhiêu giờ/tuần?)
 
 2. **Man-Day** — "Resource A: 3 Man-Day/tuần cho Project X"
    - ✅ Chính xác giờ
-   - ❌ Phải biết "1 tuần = bao nhiêu Man-Day?" (4? 5? 5.5?)
-   - ❌ Part-time, nghỉ phép → Man-Day thay đổi → phức tạp
+   - ❌ "1 tuần = bao nhiêu Man-Day?" (4? 5? 5.5?)
+   - ❌ Part-time, nghỉ phép → Man-Day thay đổi → complexity
 
 3. **Hours** — "Resource A: 24 giờ/tuần cho Project X"
    - ✅ Rất chính xác
-   - ❌ Quá granular, over-engineering cho CRM
-   - ❌ Tracking giờ = micromanagement → resource ghét
+   - ❌ Quá granular cho CRM, over-engineering
+   - ❌ Tracking giờ = micromanagement → resource phản đối
 
 ## Decision
 Chọn **% Time** vì:
-1. Trực quan nhất cho cross-context communication
-2. Validation đơn giản (sum ≤ 100%)
-3. Convert sang hours khi cần: hours = % × available_hours
+1. Trực quan nhất cho cross-context communication (Resource ↔ Finance ↔ Delivery)
+2. Validation đơn giản: `if totalAllocation > 100% → reject`
+3. Convert sang hours khi cần: `hours = % × available_hours_per_week`
 
 ## Consequences
 ### Positive
-- Business rule đơn giản: if totalAllocation > 100% → reject
-- Mọi context dùng cùng đơn vị
-
+- Business rule đơn giản: 1 invariant duy nhất (sum ≤ 100%)
+- Mọi context dùng cùng đơn vị → no translation needed
 ### Negative
-- Mất precision: "60%" không nói rõ bao nhiêu giờ
-- Cần convention: "available_hours = 40 giờ/tuần" (trừ nghỉ phép)
+- Mất precision: "60%" không nói rõ bao nhiêu giờ/ngày
+- Cần convention: `available_hours = 40 giờ/tuần` (trừ nghỉ phép)
+### Risks
+- Nếu client yêu cầu billing chính xác giờ → revisit ADR, xem xét Hybrid (% + timesheet)
 
 ## References
 - [Glossary: Allocation](../domain/glossary/allocation.md)
 - [Glossary: Utilization](../domain/glossary/utilization.md)
+- [Event Storm: ResourceAllocated](../event-storms/resource-management.md)
+- [Context Map: Resource ↔ Finance](../domain/context-map.md)
 ```
 
-### Ví dụ ADR — Logistics
+### Logistics ADR — Ví dụ
 
 ```markdown
-# ADR-001: Route Optimization dùng AI-Augmented thay vì Pure OR
+# ADR-001: Route Optimization dùng AI-Augmented (Hybrid)
 
 ## Status
 Accepted
 
 ## Context
-Route Optimization là Core Domain. Cần quyết định approach.
+Route Optimization là Core Domain (M3 Priority Matrix). Cần chọn approach:
+team có OR (Operations Research) experience nhưng không có ML team.
 
 ## Options Considered
-1. Pure Operations Research (Linear Programming)
-2. AI-only (ML predict optimal routes)
-3. Hybrid: Hard constraints (OR) + Soft optimization (AI)
+1. **Pure OR** (Linear Programming, Constraint Solver)
+   - ✅ Deterministic, provable optimal
+   - ❌ Slow với large-scale, không learn từ historical data
+2. **AI-only** (ML predict optimal routes)
+   - ✅ Learns, improves over time
+   - ❌ Non-deterministic, safety risk cho hard constraints
+3. **Hybrid: OR constraints + AI soft-optimization**
+   - ✅ Hard constraints deterministic (capacity, time windows)
+   - ✅ AI optimizes soft objectives (minimize distance, fuel)
+   - ❌ 2 systems to maintain
 
 ## Decision
-Chọn Hybrid vì:
-- Hard constraints (capacity, time windows) PHẢI deterministic
-- Soft optimization (minimize distance) AI làm tốt hơn
-- Team có OR experience nhưng không có ML team → AI-Augment = feasible
+Chọn **Hybrid** vì safety-critical constraints phải deterministic;
+AI improves soft optimization over time; team có OR but not ML → AI-Augment feasible.
 
-## Consequences
-### Positive
-- Deterministic cho safety-critical constraints
-- AI improves over time with data
-
-### Negative
-- 2 systems to maintain (OR engine + AI model)
-- AI output needs human review initially
+## References
+- [Domain Priority: Route = Core](../domain/domain-priority.md)
+- [ADR M3.3: Build + AI-Augment](../decisions/002-build-vs-buy.md)
 ```
 
-### Traceability — Kết nối ADR với DDD artifacts
+### Traceability Chain — Kết nối mọi thứ
+
+ADR không sống đơn lẻ. Nó là 1 node trong Knowledge Graph:
 
 ```
-Glossary entry (resource.md)
-  → references ADR-001 (allocation unit)
-  → referenced by Event Storm (ResourceAllocated event)
-  → informs Code (Resource aggregate, allocation ≤ 100% invariant)
-
-ADR-002 (AI-augmented matching)
-  → changes Event Storm (thêm MatchingResourcesFound event)
-  → references Domain Priority (Resource Mgmt = Core)
-  → informs Code (AI service integration)
+                ┌──────────────────────┐
+                │  Business Need       │
+                │  "PM cần biết resource│
+                │   bận bao nhiêu"     │
+                └──────────┬───────────┘
+                           │
+                ┌──────────▼───────────┐
+                │  Glossary Entry      │
+                │  allocation.md       │
+                │  "% time assigned"   │
+                └──────────┬───────────┘
+                           │
+           ┌───────────────┼───────────────┐
+           │               │               │
+   ┌───────▼───────┐ ┌────▼────────┐ ┌────▼────────┐
+   │  ADR-001      │ │ Event Storm │ │ Context Map │
+   │  "Dùng % vì  │ │ "Resource   │ │ "Resource   │
+   │   cross-ctx"  │ │  Allocated" │ │  ↔ Finance" │
+   └───────┬───────┘ └─────────────┘ └─────────────┘
+           │
+   ┌───────▼───────────────────┐
+   │  Code Implementation      │
+   │  allocation.totalPct ≤ 100│
+   │  (Resource Aggregate)     │
+   └───────────────────────────┘
 ```
+
+**Cách đọc:** Business Need → sinh ra Glossary term → dẫn đến ADR quyết định % → Event Storm capture event "ResourceAllocated" → Code implement invariant `totalPct ≤ 100%`. **Bất kỳ node nào thay đổi → traverse chain để đánh giá impact.**
+
+### ⚖️ Trade-offs — ADR Practices
+
+| | Viết ADR cho mọi quyết định | Chỉ viết ADR cho "lớn" | Không viết ADR |
+|---|---|---|---|
+| **Được** | Complete audit trail | Ít effort, focus quan trọng | Nhanh |
+| **Mất** | Quá nhiều ADRs → không ai đọc | Miss quyết định "nhỏ nhưng quan trọng" | Knowledge mất khi người rời |
+| **Rule of thumb** | Overkill trừ khi regulated | ✅ **Recommended** — viết khi ≥2 options, cross-context impact, hoặc team tranh cãi | Dev G scenario |
 
 ---
 
@@ -171,7 +241,11 @@ ADR-002 (AI-augmented matching)
 
 ### Phần A: Viết ADR cho ITO (15 phút)
 
-Chọn 1 quyết định từ quá trình học (VD: "Customer Success là Core Domain") và viết ADR đầy đủ:
+Chọn 1 quyết định từ quá trình học và viết ADR đầy đủ. Gợi ý:
+- "Customer Success là Core Domain" (M3.1)
+- "Resource Matching dùng AI-Augmented" (M3.3)
+- "Không mua Salesforce cho Opportunity Management" (M3.3)
+- "Tách Resource Management thành Skill Inventory + Allocation" (M5.1)
 
 ```markdown
 # ADR-___: _______________
@@ -181,6 +255,7 @@ Chọn 1 quyết định từ quá trình học (VD: "Customer Success là Core 
 ## Date
 
 ## Context
+(link tới Glossary entry + Event Storm)
 
 ## Decision Drivers
 
@@ -191,59 +266,61 @@ Chọn 1 quyết định từ quá trình học (VD: "Customer Success là Core 
 ## Consequences
 ### Positive
 ### Negative
+### Risks
 
 ## References
 ```
 
 ### Phần B: Viết ADR cho Logistics (10 phút)
 
-Viết ADR cho: "Chọn tech stack cho Real-time Tracking (WebSocket vs Server-Sent Events vs Polling)":
+Viết ADR cho: "Chọn tech cho Real-time Tracking: WebSocket vs Server-Sent Events vs Polling"
 
 ```markdown
-# ADR-001: _______________
-(viết đầy đủ)
+# ADR-002: _______________
+(viết đầy đủ — context, options, decision, consequences)
 ```
 
 ### Phần C: Traceability Chain (15 phút)
 
-Chọn 1 Knowledge Object bạn đã tạo (VD: Glossary entry "Allocation") và trace xuyên suốt các DDD layers:
+Chọn 1 Knowledge Object bạn đã tạo (VD: Glossary entry "Resource") và trace xuyên suốt:
 
-| Layer | Loại Knowledge Object | Ví dụ với "Allocation" | File |
+| Layer | Knowledge Object Type | Ví dụ: "Resource" | File Location |
 |---|---|---|---|
-| **Business Term** | Glossary entry | Allocation = % time phân bổ cho project | `glossary/allocation.md` |
-| **Business Rule** | Invariant | total_allocation ≤ 100% | `glossary/allocation.md#invariants` |
-| **Domain Event** | Event Storm | ResourceAllocated, AllocationRejected | `event-storms/resource-management.md` |
-| **Context** | Context Map | Resource Management (Core) | `context-map.md` |
-| **Decision** | ADR | Dùng % thay vì Man-Day (ADR-001) | `decisions/adr-001.md` |
+| **Business Term** | Glossary entry | Resource = nhân viên kỹ thuật | `glossary/resource.md` |
+| **Business Rule** | Invariant | allocation ≤ 100%, bench threshold 70% | `glossary/resource.md#invariants` |
+| **Domain Event** | Event Storm | ResourceAllocated, ResourceBenched | `event-storms/resource-management.md` |
+| **Strategic** | Context Map | Resource Context (Core) → Sales (Partnership) | `domain/context-map.md` |
+| **Decision** | ADR | Dùng % Time (ADR-001), AI matching (ADR-002) | `decisions/adr-001.md` |
+| **Code** | Aggregate | Resource aggregate, allocation invariant | `src/resource-context/domain/` |
 
-**Bây giờ, làm tương tự cho 1 term khác:**
+**Bây giờ, làm tương tự cho 1 term khác (VD: Opportunity, Route, Shipment):**
 
-| Layer | Loại Knowledge Object | Term của bạn: ___________ | File |
+| Layer | Knowledge Object Type | Term: ___________ | File Location |
 |---|---|---|---|
 | Business Term | Glossary entry | | |
 | Business Rule | Invariant | | |
 | Domain Event | Event Storm | | |
-| Context | Context Map | | |
+| Strategic | Context Map | | |
 | Decision | ADR | | |
-
-> **Tại sao exercise này quan trọng?** Khi AI Agent nhận được câu hỏi "Generate API for Allocation", nó không chỉ đọc 1 file — nó traverse toàn bộ chain này. Traceability Chain chính là thứ biến "đống files" thành "Knowledge Graph" mà AI có thể reasoning.
+| Code | Aggregate | | |
 
 ---
 
 ## 🪞 Reflect
 
-1. **ADR có "hết hạn" không?** Khi nào cần viết "Superseded by ADR-XXX"?
+1. **ADR có "hết hạn" không?** → Có. Khi business constraint thay đổi (VD: client yêu cầu giờ billing thay vì %) → viết ADR mới, set ADR cũ = `Superseded by ADR-XXX`. **Không xóa** ADR cũ — nó là lịch sử giải thích tại sao chúng ta từng chọn khác.
 
-2. **Ai nên viết ADR — Architect? Developer? PM?** Gợi ý: người quyết định viết, team review.
+2. **Ai nên viết ADR?** → **Người quyết định** viết draft, **team review** trong PR. Không phải chỉ architect — nếu dev quyết định tách context → dev viết ADR. Key: ADR = collective ownership, không phải individual opinion.
 
-3. **ADR quá dài (>2 trang) có tốt không?** Gợi ý: ADR nên đọc xong trong 5 phút. Nếu dài hơn → tách thành nhiều ADRs.
+3. **ADR quá dài (>2 trang)?** → **Tách.** Mỗi ADR = 1 quyết định. Nếu 1 ADR trả lời 3 câu hỏi khác nhau → tách thành 3 ADRs. Rule: đọc xong ADR trong ≤5 phút.
 
 ---
 
-## ✅ Hoàn thành lesson khi
-- [ ] Giải thích ADR là gì và tại sao cần
-- [ ] Viết 1 ADR hoàn chỉnh cho ITO
-- [ ] Viết 1 ADR hoàn chỉnh cho Logistics
-- [ ] Hiểu Traceability giữa ADR ↔ Glossary ↔ Event Storm
-- [ ] Hoàn thành Traceability Chain cho ≥1 Knowledge Object
+## ✅ Completion Checklist
+- [ ] **Recall:** Giải thích ADR template (Context → Options → Decision → Consequences) + tại sao cần
+- [ ] **Apply:** Viết 1 ADR hoàn chỉnh cho ITO + 1 ADR cho Logistics
+- [ ] **Analyze:** Hoàn thành Traceability Chain cho ≥1 Knowledge Object — liên hệ với "Dev G mất 3 ngày vì không có ADR"
 
+---
+
+> 🔗 **Tiếp theo:** ADR ghi lại quyết định cho **người đọc**. Nhưng AI Agent cũng cần đọc knowledge repository. Bài tiếp — *AI Context Design* — sẽ dạy bạn tối ưu Knowledge Objects cho **AI consumption**: frontmatter metadata, embedding-friendly format, và context window management — để AI Agent có thể tự navigate Knowledge Graph và generate code aligned với domain model.
